@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from "next/server"
+import { getAdminCookieName, verifyAdminSessionToken } from "@/src/server/auth/admin-auth"
+import { parseJsonBody, serverErrorResponse } from "@/src/server/http/json"
+import { deleteProduct, getProductById, updateProduct } from "@/src/server/services/data-source"
+import { productIdSchema, productInputSchema } from "@/src/server/validation/api-schemas"
+
+type RouteContext = {
+  params: Promise<{ id: string }>
+}
+
+export async function PUT(request: NextRequest, context: RouteContext) {
+  try {
+    const token = request.cookies.get(getAdminCookieName())?.value
+    if (!verifyAdminSessionToken(token)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 })
+    }
+
+    const { id } = await context.params
+    const parsedId = productIdSchema.safeParse(id)
+    if (!parsedId.success) {
+      return NextResponse.json({ error: parsedId.error.issues[0]?.message ?? "Invalid product id." }, { status: 400 })
+    }
+
+    const parsedBody = await parseJsonBody(request, productInputSchema)
+    if (!parsedBody.ok) return parsedBody.response
+
+    const updated = await updateProduct(parsedId.data, parsedBody.data)
+    if (!updated) {
+      return NextResponse.json({ error: "Product not found." }, { status: 404 })
+    }
+
+    return NextResponse.json({ item: updated })
+  } catch (error) {
+    return serverErrorResponse(error)
+  }
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  try {
+    const token = request.cookies.get(getAdminCookieName())?.value
+    if (!verifyAdminSessionToken(token)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 })
+    }
+
+    const { id } = await context.params
+    const parsedId = productIdSchema.safeParse(id)
+    if (!parsedId.success) {
+      return NextResponse.json({ error: parsedId.error.issues[0]?.message ?? "Invalid product id." }, { status: 400 })
+    }
+
+    const existing = await getProductById(parsedId.data)
+    if (!existing) {
+      return NextResponse.json({ error: "Product not found." }, { status: 404 })
+    }
+
+    await deleteProduct(parsedId.data)
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return serverErrorResponse(error)
+  }
+}
