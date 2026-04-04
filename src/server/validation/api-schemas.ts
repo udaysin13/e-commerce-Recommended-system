@@ -17,8 +17,11 @@ export const productInputSchema = z.object({
   category: z.string().trim().min(1, "Category is required."),
   kind: z.string().trim().min(1, "Type is required."),
   name: z.string().trim().min(1, "Display name is required."),
-  image: z.string().trim().min(1, "Image is required."),
+  imageUrl: z.string().trim().default("/placeholder.jpg"),
+  images: z.array(z.string().trim().min(1, "Image URL cannot be empty.")).default([]),
   price: z.coerce.number().finite().positive("Price must be a positive number."),
+  description: z.string().trim().max(1200, "Description must be 1200 characters or fewer.").optional().default(""),
+  inStock: z.coerce.number().int().min(0, "Stock cannot be negative.").max(99999, "Stock is too large.").optional().default(0),
 })
 
 export const productIdSchema = z.string().min(1, "Invalid product id.")

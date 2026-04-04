@@ -31,6 +31,22 @@ async function main() {
   const productsFile = path.join(__dirname, "..", "data", "products.json")
   const productsJson = JSON.parse(fs.readFileSync(productsFile, "utf8"))
 
+  await prisma.recommendation.deleteMany()
+  await prisma.review.deleteMany()
+  await prisma.wishlistItem.deleteMany()
+  await prisma.cartItem.deleteMany()
+  await prisma.orderItem.deleteMany()
+  await prisma.order.deleteMany({
+    where: {
+      OR: [
+        { productId: { not: null } },
+        { items: { none: {} } },
+      ],
+    },
+  })
+  await prisma.product.deleteMany()
+  await prisma.category.deleteMany()
+
   const categoriesByName = new Map()
 
   for (const item of productsJson) {
@@ -55,20 +71,30 @@ async function main() {
       where: { slug },
       update: {
         kind: item.kind,
-        image: item.image,
+        imageUrl: item.imageUrl || item.image || "/placeholder.jpg",
+        images: Array.isArray(item.images) && item.images.length > 0
+          ? item.images
+          : [item.imageUrl || item.image || "/placeholder.jpg"],
         price: item.price,
-        inStock: 50,
-        description: item.kind ? `A great ${item.kind} from ${item.category}.` : undefined,
+        inStock: item.inStock ?? 50,
+        ratingAvg: item.rating ?? item.ratingAvg ?? 4.2,
+        ratingCount: item.reviews ?? item.ratingCount ?? 100,
+        description: item.description || (item.kind ? `${item.name} in ${item.category} for everyday use.` : undefined),
         categoryId: category.id,
       },
       create: {
         name,
         slug,
         kind: item.kind,
-        image: item.image,
+        imageUrl: item.imageUrl || item.image || "/placeholder.jpg",
+        images: Array.isArray(item.images) && item.images.length > 0
+          ? item.images
+          : [item.imageUrl || item.image || "/placeholder.jpg"],
         price: item.price,
-        inStock: 50,
-        description: item.kind ? `A great ${item.kind} from ${item.category}.` : undefined,
+        inStock: item.inStock ?? 50,
+        ratingAvg: item.rating ?? item.ratingAvg ?? 4.2,
+        ratingCount: item.reviews ?? item.ratingCount ?? 100,
+        description: item.description || (item.kind ? `${item.name} in ${item.category} for everyday use.` : undefined),
         categoryId: category.id,
       },
     })

@@ -6,7 +6,8 @@ export type ProductInput = {
   category: string
   kind: string
   name: string
-  image: string
+  imageUrl: string
+  images?: string[]
   price: number
   slug?: string
   description?: string
@@ -19,7 +20,8 @@ const normalizeInput = (input: ProductInput): ProductInput => ({
   category: input.category.trim(),
   kind: input.kind.trim(),
   name: input.name.trim(),
-  image: input.image.trim(),
+  imageUrl: input.imageUrl.trim(),
+  images: Array.from(new Set((input.images ?? []).map((image) => image.trim()).filter(Boolean))),
   price: Number(input.price),
 })
 
@@ -29,6 +31,8 @@ export const readProducts = async (): Promise<CatalogProduct[]> => {
   return parsed.map((item) => ({
     ...item,
     id: String(item.id),
+    imageUrl: String(item.imageUrl ?? ""),
+    images: Array.isArray(item.images) ? item.images.map((image) => String(image)) : [],
   })) as CatalogProduct[]
 }
 
@@ -68,6 +72,6 @@ export const queryProducts = ({
 
 export const createProduct = (items: CatalogProduct[], input: ProductInput): CatalogProduct => {
   const normalized = normalizeInput(input)
-  return { id: crypto.randomUUID(), ...normalized }
+  return { id: crypto.randomUUID(), ...normalized, images: normalized.images ?? [] }
 }
 

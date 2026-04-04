@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import type { CatalogProduct } from "@/src/shared/catalog-types"
+import { DEFAULT_PRODUCT_IMAGE } from "@/src/shared/product-images"
 import { prisma } from "@/src/server/db/prisma"
 import type { ProductInput } from "@/src/server/services/products-store"
 
@@ -13,13 +14,36 @@ type ProductWithCategory = Prisma.ProductGetPayload<{
   include: { category: true }
 }>
 
+function toProductSlug(input: Pick<ProductInput, "name" | "slug">) {
+  return (input.slug ?? input.name)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+}
+
+async function ensureProductSlugAvailable(input: Pick<ProductInput, "name" | "slug">, excludeId?: string) {
+  const slug = toProductSlug(input)
+
+  const existing = await prisma.product.findUnique({
+    where: { slug },
+    select: { id: true, name: true },
+  })
+
+  if (existing && existing.id !== excludeId) {
+    throw new Error(`A product named "${existing.name}" already exists. Please use a different product name.`)
+  }
+
+  return slug
+}
+
 function mapPrismaProduct(product: ProductWithCategory): CatalogProduct {
   return {
     id: String(product.id),
     name: product.name,
     slug: product.slug,
     kind: product.kind,
-    image: product.image,
+    imageUrl: product.imageUrl,
+    images: product.images.length > 0 ? product.images : [product.imageUrl],
     price: Number(product.price),
     category: product.category.name,
     description: product.description ?? undefined,
@@ -82,6 +106,7 @@ export async function getProductById(id: string) {
 }
 
 export async function createProduct(input: ProductInput) {
+  const productSlug = await ensureProductSlugAvailable(input)
   const categorySlug = input.category.toLowerCase().replace(/\s+/g, "-")
   const category = await prisma.category.upsert({
     where: { slug: categorySlug },
@@ -92,9 +117,10 @@ export async function createProduct(input: ProductInput) {
   const product = await prisma.product.create({
     data: {
       name: input.name,
-      slug: input.slug ?? input.name.toLowerCase().replace(/\s+/g, "-"),
+      slug: productSlug,
       kind: input.kind,
-      image: input.image,
+      imageUrl: input.imageUrl || DEFAULT_PRODUCT_IMAGE,
+      images: input.images && input.images.length > 0 ? input.images : [input.imageUrl || DEFAULT_PRODUCT_IMAGE],
       price: input.price,
       inStock: input.inStock ?? 0,
       description: input.description ?? null,
@@ -110,6 +136,7 @@ export async function updateProduct(id: string, input: ProductInput) {
   const existing = await prisma.product.findUnique({ where: { id } })
   if (!existing) return null
 
+  const productSlug = await ensureProductSlugAvailable(input, id)
   const categorySlug = input.category.toLowerCase().replace(/\s+/g, "-")
   const category = await prisma.category.upsert({
     where: { slug: categorySlug },
@@ -121,9 +148,10 @@ export async function updateProduct(id: string, input: ProductInput) {
     where: { id },
     data: {
       name: input.name,
-      slug: input.slug ?? input.name.toLowerCase().replace(/\s+/g, "-"),
+      slug: productSlug,
       kind: input.kind,
-      image: input.image,
+      imageUrl: input.imageUrl || DEFAULT_PRODUCT_IMAGE,
+      images: input.images && input.images.length > 0 ? input.images : [input.imageUrl || DEFAULT_PRODUCT_IMAGE],
       price: input.price,
       inStock: input.inStock ?? 0,
       description: input.description ?? null,
@@ -138,4 +166,50 @@ export async function updateProduct(id: string, input: ProductInput) {
 export async function deleteProduct(id: string) {
   await prisma.product.delete({ where: { id } })
   return true
+}
+
+export async function syncProductImagesBySlug(
+  updates: Array<{ slug: string; imageUrl: string }>
+) {
+  if (updates.length === 0) {
+    return { updated: [] as CatalogProduct[], unmatchedSlugs: [] as string[] }
+  }
+
+  const uniqueUpdates = Array.from(
+    new Map(updates.map((update) => [update.slug, update])).values()
+  )
+
+  const products = await prisma.product.findMany({
+    where: { slug: { in: uniqueUpdates.map((update) => update.slug) } },
+    include: { category: true },
+  })
+
+  const productsBySlug = new Map(products.map((product) => [product.slug, product]))
+  const updated: CatalogProduct[] = []
+  const unmatchedSlugs: string[] = []
+
+  for (const update of uniqueUpdates) {
+    const product = productsBySlug.get(update.slug)
+    if (!product) {
+      unmatchedSlugs.push(update.slug)
+      continue
+    }
+
+    const nextImages = Array.from(
+      new Set([update.imageUrl, ...product.images.filter((image) => image !== DEFAULT_PRODUCT_IMAGE)])
+    )
+
+    const result = await prisma.product.update({
+      where: { id: product.id },
+      data: {
+        imageUrl: update.imageUrl,
+        images: nextImages,
+      },
+      include: { category: true },
+    })
+
+    updated.push(mapPrismaProduct(result))
+  }
+
+  return { updated, unmatchedSlugs }
 }

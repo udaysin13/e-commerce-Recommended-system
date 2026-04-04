@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getAdminCookieName, verifyAdminSessionToken } from "@/src/server/auth/admin-auth"
 import { parseJsonBody, serverErrorResponse } from "@/src/server/http/json"
 import { createProduct, queryProducts } from "@/src/server/services/data-source"
+import type { ProductInput } from "@/src/server/services/products-store"
 import { productInputSchema, productQuerySchema } from "@/src/server/validation/api-schemas"
 
 export async function GET(request: NextRequest) {
@@ -34,7 +35,13 @@ export async function POST(request: NextRequest) {
     const parsedBody = await parseJsonBody(request, productInputSchema)
     if (!parsedBody.ok) return parsedBody.response
 
-    const created = await createProduct(parsedBody.data)
+    const payload: ProductInput = {
+      ...parsedBody.data,
+      imageUrl: parsedBody.data.imageUrl ?? "/placeholder.jpg",
+      images: parsedBody.data.images ?? [],
+    }
+
+    const created = await createProduct(payload)
     return NextResponse.json({ item: created }, { status: 201 })
   } catch (error) {
     return serverErrorResponse(error)

@@ -42,7 +42,8 @@ model Product {
   slug         String         @unique
   kind         String
   description  String?
-  image        String
+  imageUrl     String         @default("/placeholder.jpg")
+  images       String[]       @default([])
   price        Float
   inStock      Int            @default(0)
   ratingAvg    Float          @default(0)

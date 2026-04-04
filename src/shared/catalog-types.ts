@@ -3,7 +3,8 @@ export type CatalogProduct = {
   category: string
   kind: string
   name: string
-  image: string
+  imageUrl: string
+  images: string[]
   price: number
   slug?: string
   description?: string

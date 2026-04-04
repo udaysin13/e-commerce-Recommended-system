@@ -8,7 +8,8 @@ export type CartProduct = {
     name: string
     slug: string
     kind: string
-    image: string
+    imageUrl: string
+    images: string[]
     price: number
     inStock: number
     category: { name: string }

@@ -38,6 +38,9 @@ export function serverErrorResponse(error: unknown) {
     if (/not found/i.test(error.message)) {
       return NextResponse.json({ error: error.message }, { status: 404 })
     }
+    if (/already exists/i.test(error.message)) {
+      return NextResponse.json({ error: error.message }, { status: 409 })
+    }
   }
   return NextResponse.json({ error: "Internal server error." }, { status: 500 })
 }

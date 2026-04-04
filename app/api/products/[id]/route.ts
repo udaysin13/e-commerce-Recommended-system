@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getAdminCookieName, verifyAdminSessionToken } from "@/src/server/auth/admin-auth"
 import { parseJsonBody, serverErrorResponse } from "@/src/server/http/json"
 import { deleteProduct, getProductById, updateProduct } from "@/src/server/services/data-source"
+import type { ProductInput } from "@/src/server/services/products-store"
 import { productIdSchema, productInputSchema } from "@/src/server/validation/api-schemas"
 
 type RouteContext = {
@@ -24,7 +25,13 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const parsedBody = await parseJsonBody(request, productInputSchema)
     if (!parsedBody.ok) return parsedBody.response
 
-    const updated = await updateProduct(parsedId.data, parsedBody.data)
+    const payload: ProductInput = {
+      ...parsedBody.data,
+      imageUrl: parsedBody.data.imageUrl ?? "/placeholder.jpg",
+      images: parsedBody.data.images ?? [],
+    }
+
+    const updated = await updateProduct(parsedId.data, payload)
     if (!updated) {
       return NextResponse.json({ error: "Product not found." }, { status: 404 })
     }

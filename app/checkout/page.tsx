@@ -2,6 +2,8 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { CheckoutForm } from "@/src/components/checkout/checkout-form"
+import { StorefrontFooter } from "@/src/components/storefront/storefront-footer"
+import { StorefrontSubnav } from "@/src/components/storefront/storefront-subnav"
 import { getSessionCookieName, getSessionUserFromToken } from "@/src/server/auth/user-auth"
 import { getProductById } from "@/src/server/services/data-source"
 
@@ -36,10 +38,15 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f5f8fd_0%,#eef3f9_100%)] px-4 py-10">
-      <div className="mx-auto max-w-6xl">
+    <div className="min-h-screen">
+      <StorefrontSubnav
+        title="Secure checkout"
+        subtitle="Complete your order with a distraction-free flow, trust signals, and a clear summary at every step."
+      />
+      <main className="page-shell py-8">
         <CheckoutForm product={product} />
-      </div>
-    </main>
+      </main>
+      <StorefrontFooter />
+    </div>
   )
 }

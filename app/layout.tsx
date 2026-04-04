@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import { Inter } from 'next/font/google'
+import { Toaster } from 'sonner'
 import './globals.css'
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+})
+
 export const metadata: Metadata = {
-  title: 'FluxCart - Premium Product Recommendations',
-  description: 'Discover curated products with intelligent recommendations and a modern shopping experience.',
+  title: 'FluxCart AI Commerce',
+  description:
+    'FluxCart is an AI-powered ecommerce recommendation platform with personalized product discovery and streamlined checkout.',
   generator: 'FluxCart',
   icons: {
     icon: [
@@ -26,7 +34,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#ffffff',
+  themeColor: '#020617',
   width: 'device-width',
   initialScale: 1,
 }
@@ -38,8 +46,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased">
+      <body className={`${inter.variable} font-sans antialiased`}>
         {children}
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          toastOptions={{
+            classNames: {
+              toast: '!border-border !bg-slate-950 !text-slate-50',
+              description: '!text-slate-300',
+            },
+          }}
+        />
         <Analytics />
       </body>
     </html>

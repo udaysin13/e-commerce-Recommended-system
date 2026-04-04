@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="960" height="960" viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="48" y1="40" x2="420" y2="436" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3f2b1d"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="140" y1="80" x2="328" y2="278" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="480" rx="36" fill="url(#bg)"/>
+  <circle cx="102" cy="88" r="116" fill="#ffffff" opacity="0.07"/>
+  <circle cx="406" cy="68" r="84" fill="#ffffff" opacity="0.06"/>
+  <rect x="34" y="34" width="412" height="412" rx="30" fill="url(#glow)" stroke="#ffffff" stroke-opacity="0.10"/>
+  <rect x="42" y="42" width="150" height="34" rx="17" fill="#0f172a" fill-opacity="0.56"/>
+  <text x="58" y="63" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#f8fafc">Trending</text>
+  <rect x="62" y="92" width="356" height="218" rx="30" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.12"/>
+  <rect x="174" y="102" width="132" height="170" rx="20" fill="#fef3c7" opacity="0.96"/><rect x="190" y="124" width="100" height="126" rx="14" fill="#0f172a" opacity="0.18"/><rect x="206" y="84" width="68" height="26" rx="10" fill="#e2e8f0" opacity="0.8"/>
+  <rect x="42" y="324" width="126" height="28" rx="14" fill="#0f172a" fill-opacity="0.44" stroke="#ffffff" stroke-opacity="0.10"/>
+  <text x="58" y="342" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#e2e8f0" letter-spacing="1">Home &amp; Kitchen</text>
+  <text x="42" y="374" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#f8fafc">Cello Max Fresh Steel</text><text x="42" y="404" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#f8fafc">Lunch Box Set</text>
+  <text x="42" y="442" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#cbd5e1">Kitchen Storage</text>
+  <text x="42" y="468" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#a5b4fc">Rs. 999  ?  4.2  ?  1457 reviews</text>
+</svg>

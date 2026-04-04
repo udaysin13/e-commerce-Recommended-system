@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="960" height="960" viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="48" y1="40" x2="420" y2="436" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1f2937"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="140" y1="80" x2="328" y2="278" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="480" rx="36" fill="url(#bg)"/>
+  <circle cx="102" cy="88" r="116" fill="#ffffff" opacity="0.07"/>
+  <circle cx="406" cy="68" r="84" fill="#ffffff" opacity="0.06"/>
+  <rect x="34" y="34" width="412" height="412" rx="30" fill="url(#glow)" stroke="#ffffff" stroke-opacity="0.10"/>
+  <rect x="42" y="42" width="150" height="34" rx="17" fill="#0f172a" fill-opacity="0.56"/>
+  <text x="58" y="63" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#f8fafc">Top Pick</text>
+  <rect x="62" y="92" width="356" height="218" rx="30" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.12"/>
+  <path d="M216 86h48l-10 38h-28z" fill="#ede9fe" opacity="0.96"/><path d="M216 302h48l-10-38h-28z" fill="#ede9fe" opacity="0.96"/><circle cx="240" cy="194" r="56" fill="#ede9fe" opacity="0.96"/><circle cx="240" cy="194" r="34" fill="#0f172a" opacity="0.84"/><path d="M240 194l14-20M240 194l18 10" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/>
+  <rect x="42" y="324" width="126" height="28" rx="14" fill="#0f172a" fill-opacity="0.44" stroke="#ffffff" stroke-opacity="0.10"/>
+  <text x="58" y="342" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#e2e8f0" letter-spacing="1">Accessories</text>
+  <text x="42" y="374" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#f8fafc">Fossil Grant</text><text x="42" y="404" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#f8fafc">Chronograph Watch</text>
+  <text x="42" y="442" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#cbd5e1">Watch</text>
+  <text x="42" y="468" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#a5b4fc">Rs. 8,995  ?  4.5  ?  864 reviews</text>
+</svg>
