@@ -9,6 +9,25 @@ type RouteContext = {
   params: Promise<{ id: string }>
 }
 
+export async function GET(_request: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params
+    const parsedId = productIdSchema.safeParse(id)
+    if (!parsedId.success) {
+      return NextResponse.json({ error: parsedId.error.issues[0]?.message ?? "Invalid product id." }, { status: 400 })
+    }
+
+    const product = await getProductById(parsedId.data)
+    if (!product) {
+      return NextResponse.json({ error: "Product not found." }, { status: 404 })
+    }
+
+    return NextResponse.json({ item: product })
+  } catch (error) {
+    return serverErrorResponse(error)
+  }
+}
+
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const token = request.cookies.get(getAdminCookieName())?.value

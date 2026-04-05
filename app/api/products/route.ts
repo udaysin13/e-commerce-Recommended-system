@@ -12,13 +12,17 @@ export async function GET(request: NextRequest) {
       q: searchParams.get("q") ?? "",
       category: searchParams.get("category") ?? "All",
       sort: searchParams.get("sort") ?? "Newest",
+      page: searchParams.get("page") ?? 1,
+      limit: searchParams.get("limit") ?? 8,
+      minPrice: searchParams.get("minPrice") ?? undefined,
+      maxPrice: searchParams.get("maxPrice") ?? undefined,
     })
     if (!parsedQuery.success) {
       return NextResponse.json({ error: parsedQuery.error.issues[0]?.message ?? "Invalid query." }, { status: 400 })
     }
 
-    const { q, category, sort } = parsedQuery.data
-    const payload = await queryProducts({ q, category, sort })
+    const { q, category, sort, page, limit, minPrice, maxPrice } = parsedQuery.data
+    const payload = await queryProducts({ q, category, sort, page, limit, minPrice, maxPrice })
     return NextResponse.json(payload)
   } catch (error) {
     return serverErrorResponse(error)

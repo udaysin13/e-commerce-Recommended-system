@@ -11,6 +11,10 @@ export const productQuerySchema = z.object({
   q: z.string().default(""),
   category: z.string().default("All"),
   sort: z.enum(productSortValues).default("Newest"),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(24).default(8),
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
 })
 
 export const productInputSchema = z.object({
@@ -88,4 +92,12 @@ export const orderCreateSchema = z.object({
 
 export const reorderSchema = z.object({
   orderId: orderIdSchema,
+})
+
+export const productViewSchema = z.object({
+  productId: z.string().trim().min(1, "Product id is required."),
+})
+
+export const recommendationQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(12).default(6),
 })

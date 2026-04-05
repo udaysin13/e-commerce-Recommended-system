@@ -8,6 +8,10 @@ export type ProductQueryParams = {
   q: string
   category: string
   sort: string
+  page?: number
+  limit?: number
+  minPrice?: number
+  maxPrice?: number
 }
 
 type ProductWithCategory = Prisma.ProductGetPayload<{
@@ -36,7 +40,7 @@ async function ensureProductSlugAvailable(input: Pick<ProductInput, "name" | "sl
   return slug
 }
 
-function mapPrismaProduct(product: ProductWithCategory): CatalogProduct {
+export function mapPrismaProduct(product: ProductWithCategory): CatalogProduct {
   return {
     id: String(product.id),
     name: product.name,
@@ -54,7 +58,7 @@ function mapPrismaProduct(product: ProductWithCategory): CatalogProduct {
 }
 
 export async function queryProducts(params: ProductQueryParams) {
-  const { q, category, sort } = params
+  const { q, category, sort, page = 1, limit = 8, minPrice, maxPrice } = params
   const andFilters: Prisma.ProductWhereInput[] = []
 
   if (category && category !== "All") {
@@ -72,27 +76,45 @@ export async function queryProducts(params: ProductQueryParams) {
     })
   }
 
+  if (typeof minPrice === "number" || typeof maxPrice === "number") {
+    andFilters.push({
+      price: {
+        gte: typeof minPrice === "number" ? minPrice : undefined,
+        lte: typeof maxPrice === "number" ? maxPrice : undefined,
+      },
+    })
+  }
+
   let orderBy: Prisma.ProductOrderByWithRelationInput[] = [{ createdAt: "desc" }]
   if (sort === "Price low-high") orderBy = [{ price: "asc" }]
   if (sort === "Price high-low") orderBy = [{ price: "desc" }]
   if (sort === "Category") orderBy = [{ category: { name: "asc" } }, { name: "asc" }]
 
-  const products = await prisma.product.findMany({
-    where: andFilters.length > 0 ? { AND: andFilters } : undefined,
-    orderBy,
-    include: { category: true },
-    take: 100,
-  })
+  const where = andFilters.length > 0 ? { AND: andFilters } : undefined
+  const skip = (page - 1) * limit
 
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-    select: { name: true },
-  })
+  const [products, total, categories] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy,
+      include: { category: true },
+      skip,
+      take: limit,
+    }),
+    prisma.product.count({ where }),
+    prisma.category.findMany({
+      orderBy: { name: "asc" },
+      select: { name: true },
+    }),
+  ])
 
   return {
     items: products.map(mapPrismaProduct),
-    total: products.length,
+    total,
     categories: categories.map((categoryItem) => categoryItem.name),
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
   }
 }
 

@@ -138,5 +138,13 @@ export async function createOrder(
     },
   })
 
+  await prisma.userActivity.createMany({
+    data: lineItems.map((item) => ({
+      userId,
+      type: "PURCHASE",
+      metadata: { productId: item.productId, quantity: item.quantity, orderId: order.id },
+    })),
+  })
+
   return mapOrder(order)
 }

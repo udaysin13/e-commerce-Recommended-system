@@ -24,6 +24,7 @@ model User {
   orders          Order[]
   reviews         Review[]
   activities      UserActivity[]
+  viewHistory     ViewHistory[]
   recommendations Recommendation[]
 }
 
@@ -57,7 +58,20 @@ model Product {
   cartItems       CartItem[]
   wishlistItems   WishlistItem[]
   reviews         Review[]
+  viewHistory     ViewHistory[]
   recommendations Recommendation[]
+}
+
+model ViewHistory {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  viewedAt  DateTime @default(now())
+
+  @@index([userId, viewedAt])
+  @@index([productId, viewedAt])
 }
 
 model Cart {

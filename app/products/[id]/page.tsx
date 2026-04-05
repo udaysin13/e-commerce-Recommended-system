@@ -6,6 +6,7 @@ import { StorefrontFooter } from "@/src/components/storefront/storefront-footer"
 import { ProductViewTracker } from "@/src/components/storefront/product-view-tracker"
 import { StorefrontSubnav } from "@/src/components/storefront/storefront-subnav"
 import { getProductById } from "@/src/server/services/data-source"
+import { getSimilarProducts } from "@/src/server/services/hybrid-recommendations"
 import { getPrimaryProductImage, getResolvedProductImages } from "@/src/shared/product-images"
 
 type ProductDetailPageProps = {
@@ -22,6 +23,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const { id } = await params
   const product = await getProductById(id)
   if (!product) notFound()
+  const similarProducts = await getSimilarProducts(product.id, 4).catch(() => [])
 
   const primaryImage = getPrimaryProductImage(product)
   const galleryImages = getResolvedProductImages(product)
@@ -144,6 +146,43 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           </aside>
         </div>
+
+        <section className="mt-10">
+          <div className="mb-5">
+            <p className="eyebrow">Similar Products</p>
+            <h2 className="text-3xl font-semibold text-white">Content-based matches for this product</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-400">
+              These recommendations use the same category and a similar price range, which is the content-based part of the hybrid recommendation system.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {similarProducts.map((item) => (
+              <Link
+                key={item.id}
+                href={`/products/${encodeURIComponent(item.id)}`}
+                className="surface-panel block overflow-hidden rounded-[1.6rem] p-4 transition hover:-translate-y-1"
+              >
+                <div className="relative aspect-[4/5] overflow-hidden rounded-[1.2rem] bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.95))]">
+                  <ProductImage
+                    src={getPrimaryProductImage(item)}
+                    alt={item.name}
+                    fill
+                    unoptimized={getPrimaryProductImage(item).startsWith("data:image/")}
+                    className="p-5"
+                    sizes="(max-width: 768px) 100vw, 25vw"
+                  />
+                </div>
+                <div className="mt-4">
+                  <span className="market-chip">{item.category}</span>
+                  <h3 className="mt-3 text-lg font-semibold text-white">{item.name}</h3>
+                  <p className="mt-2 text-sm text-slate-400">{item.reason}</p>
+                  <p className="mt-4 text-xl font-bold text-white">Rs. {item.price.toLocaleString("en-IN")}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       </main>
 
       <StorefrontFooter />

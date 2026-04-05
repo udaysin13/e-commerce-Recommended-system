@@ -21,6 +21,7 @@ import { pushRecentView } from "@/src/shared/personalization-storage"
 import { toast } from "sonner"
 
 type SessionUser = {
+  id: string
   name: string
   email: string
 }
@@ -29,9 +30,27 @@ type ProductsApiResponse = {
   items: CatalogProduct[]
   total: number
   categories: string[]
+  page: number
+  limit: number
+  totalPages: number
 }
 
 type CartItem = CatalogProduct & { quantity: number }
+
+type RecommendationItem = CatalogProduct & {
+  score: number
+  source: string
+  reason: string
+}
+
+type RecommendationResponse = {
+  items: RecommendationItem[]
+  insights: {
+    views: number
+    purchases: number
+    topCategory: string
+  }
+}
 
 const sortOptions = ["Newest", "Price low-high", "Price high-low", "Category"] as const
 const priceBands = [
@@ -63,10 +82,17 @@ export default function ProductsListingPage() {
   const [wishlist, setWishlist] = useState<string[]>([])
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [productsError, setProductsError] = useState("")
   const [priceLimit, setPriceLimit] = useState<number | null>(null)
   const [minimumRating, setMinimumRating] = useState(0)
   const [inStockOnly, setInStockOnly] = useState(false)
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalProducts, setTotalProducts] = useState(0)
+  const [recommendedItems, setRecommendedItems] = useState<RecommendationItem[]>([])
+  const [recommendationInsights, setRecommendationInsights] = useState<RecommendationResponse["insights"] | null>(null)
+  const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [authName, setAuthName] = useState("")
@@ -78,16 +104,45 @@ export default function ProductsListingPage() {
   useEffect(() => {
     void (async () => {
       setIsLoading(true)
-      const params = new URLSearchParams({ q: query, category: selectedCategory, sort: sortBy })
-      const response = await fetch(`/api/products?${params.toString()}`)
-      if (response.ok) {
-        const payload = (await response.json()) as ProductsApiResponse
+      setProductsError("")
+
+      try {
+        const params = new URLSearchParams({
+          q: query,
+          category: selectedCategory,
+          sort: sortBy,
+          page: String(currentPage),
+          limit: "8",
+        })
+
+        if (priceLimit !== null) {
+          params.set("maxPrice", String(priceLimit))
+        }
+
+        const response = await fetch(`/api/products?${params.toString()}`)
+        const payload = (await response.json()) as ProductsApiResponse & { error?: string }
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Unable to load products.")
+        }
+
         setProducts(payload.items)
         setCategories(["All", ...payload.categories])
+        setCurrentPage(payload.page)
+        setTotalPages(payload.totalPages)
+        setTotalProducts(payload.total)
+      } catch (error) {
+        setProducts([])
+        setProductsError(error instanceof Error ? error.message : "Unable to load products.")
       }
+
       setIsLoading(false)
     })()
-  }, [query, selectedCategory, sortBy])
+  }, [currentPage, priceLimit, query, selectedCategory, sortBy])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [query, selectedCategory, sortBy, priceLimit])
 
   const loadSession = useCallback(async () => {
     try {
@@ -103,6 +158,33 @@ export default function ProductsListingPage() {
   useEffect(() => {
     void loadSession()
   }, [loadSession])
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setRecommendedItems([])
+      setRecommendationInsights(null)
+      return
+    }
+
+    void (async () => {
+      setIsRecommendationsLoading(true)
+      try {
+        const response = await fetch(`/api/recommendations/${encodeURIComponent(currentUser.id)}?limit=4`)
+        const payload = (await response.json()) as RecommendationResponse & { error?: string }
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Unable to load recommendations.")
+        }
+
+        setRecommendedItems(payload.items)
+        setRecommendationInsights(payload.insights)
+      } catch {
+        setRecommendedItems([])
+        setRecommendationInsights(null)
+      } finally {
+        setIsRecommendationsLoading(false)
+      }
+    })()
+  }, [currentUser?.id])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -391,8 +473,70 @@ export default function ProductsListingPage() {
               ) : (
                 <span className="market-chip">All products</span>
               )}
-              <span className="text-sm text-muted-foreground">{filteredProducts.length} items</span>
+              <span className="text-sm text-muted-foreground">
+                {totalProducts} items across {totalPages} pages
+              </span>
             </div>
+
+            {currentUser ? (
+              <div className="surface-panel p-5">
+                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="eyebrow">Recommended For You</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-foreground">
+                      Hybrid recommendations from your views and purchases
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+                      These products combine content-based matching on category and price with collaborative filtering from similar shoppers.
+                    </p>
+                  </div>
+                  {recommendationInsights ? (
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div className="rounded-[1rem] border border-border bg-card px-4 py-3">
+                        <p className="text-muted-foreground">Views</p>
+                        <p className="mt-1 text-lg font-semibold text-foreground">{recommendationInsights.views}</p>
+                      </div>
+                      <div className="rounded-[1rem] border border-border bg-card px-4 py-3">
+                        <p className="text-muted-foreground">Purchases</p>
+                        <p className="mt-1 text-lg font-semibold text-foreground">{recommendationInsights.purchases}</p>
+                      </div>
+                      <div className="rounded-[1rem] border border-border bg-card px-4 py-3">
+                        <p className="text-muted-foreground">Top category</p>
+                        <p className="mt-1 text-lg font-semibold text-foreground">{recommendationInsights.topCategory}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {isRecommendationsLoading
+                    ? Array.from({ length: 4 }).map((_, index) => <ListingSkeleton key={`rec-skeleton-${index}`} />)
+                    : recommendedItems.map((product) => (
+                        <ProductCard
+                          key={`recommended-${product.id}`}
+                          product={{
+                            ...product,
+                            reason: {
+                              label: product.reason,
+                              type: "fallback_popular",
+                            },
+                          }}
+                          badge={product.source === "collaborative" ? "Similar buyers" : "Recommended"}
+                          wishlisted={wishlist.includes(product.id)}
+                          onAddToCart={handleAddToCart}
+                          onToggleWishlist={handleWishlistToggle}
+                          onViewProduct={handleViewProduct}
+                        />
+                      ))}
+                </div>
+              </div>
+            ) : null}
+
+            {productsError ? (
+              <div className="rounded-[1rem] border border-[rgba(177,67,49,0.18)] bg-[rgba(177,67,49,0.06)] px-4 py-3 text-sm text-[#8e3328]">
+                {productsError}
+              </div>
+            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {isLoading
@@ -408,6 +552,30 @@ export default function ProductsListingPage() {
                       onViewProduct={handleViewProduct}
                     />
                   ))}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] border border-border bg-card px-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  className="market-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  className="market-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         </section>
