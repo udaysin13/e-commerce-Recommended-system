@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createOrder, createView, fetchProductById } from "../lib/api";
+import { addCartItem } from "../lib/cart";
 import LoadingGrid from "./LoadingGrid";
+import ProductImage from "./ProductImage";
 import RecommendationSection from "./RecommendationSection";
 
 const demoUserId = 1;
@@ -12,24 +15,32 @@ export default function ProductDetailClient({ productId }) {
   const [similarProducts, setSimilarProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [missingProduct, setMissingProduct] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
+  const [cartMessage, setCartMessage] = useState("");
 
   useEffect(() => {
     async function loadProduct() {
       try {
         setLoading(true);
         setError("");
+        setMissingProduct(false);
 
         const response = await fetchProductById(productId);
-        setProduct(response.item);
-        setSimilarProducts(response.similarProducts || []);
+        setProduct(response?.item || null);
+        setSimilarProducts(Array.isArray(response?.similarProducts) ? response.similarProducts : []);
 
-        await createView({
+        createView({
           userId: demoUserId,
           productId: Number(productId),
+        }).catch(() => {
+          // Viewing analytics should not block the product page.
         });
       } catch (err) {
+        setMissingProduct(err?.status === 404);
         setError(err.message || "Unable to load product.");
+        setProduct(null);
+        setSimilarProducts([]);
       } finally {
         setLoading(false);
       }
@@ -45,63 +56,197 @@ export default function ProductDetailClient({ productId }) {
         userId: demoUserId,
         productId: Number(productId),
       });
-      setOrderMessage("Order created successfully. Collaborative recommendations will improve after more purchases.");
+      setOrderMessage(
+        "Order created successfully. Collaborative recommendations will improve after more purchases."
+      );
     } catch (err) {
       setOrderMessage(err.message || "Unable to create order.");
     }
   }
 
+  function handleAddToCart() {
+    if (!product) {
+      return;
+    }
+
+    addCartItem(product);
+    setCartMessage("Added to cart successfully.");
+  }
+
+  const productPrice =
+    typeof product?.price === "number" && Number.isFinite(product.price) ? product.price : 0;
+  const productImage =
+    typeof product?.imageUrl === "string" && product.imageUrl.trim()
+      ? product.imageUrl
+      : "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80";
+
   if (loading) {
     return (
       <main className="page-shell py-10">
-        <LoadingGrid count={2} />
+        <div className="space-y-6">
+          <LoadingGrid count={2} />
+        </div>
       </main>
     );
   }
 
   if (error || !product) {
     return (
-      <main className="page-shell py-10">
-        <div className="panel px-6 py-5 text-red-700">{error || "Product not found."}</div>
+      <main className="page-shell py-12">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 py-16">
+          <p className="mb-3 text-3xl" aria-hidden="true">
+            !
+          </p>
+          <p className="text-xl font-bold text-red-900">{error || "Product not found."}</p>
+          <p className="mt-2 text-stone-600">
+            {missingProduct
+              ? "The product you're looking for doesn't exist or has been removed."
+              : "We couldn't load this product right now. Check that the backend server is running and try again."}
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 font-semibold text-white transition-all hover:bg-blue-700"
+          >
+            &larr; Back to Products
+          </Link>
+        </div>
       </main>
     );
   }
 
   return (
     <main className="page-shell py-8">
-      <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="panel p-6 sm:p-8">
-          <div className="rounded-[30px] bg-[linear-gradient(135deg,#183153,#345d96)] p-8 text-white">
-            <p className="text-sm uppercase tracking-[0.32em] text-white/70">{product.category}</p>
-            <h1 className="mt-4 text-4xl font-semibold sm:text-5xl">{product.name}</h1>
-            <p className="mt-4 text-lg text-white/80">
-              This detail page records views and asks the backend for similar products.
+      <Link
+        href="/"
+        className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition-all hover:gap-3 hover:text-blue-700"
+      >
+        &larr; Back to Products
+      </Link>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <div className="overflow-hidden rounded-2xl border border-stone-200 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 p-8 text-white shadow-lg sm:p-12">
+            <div className="inline-block rounded-full bg-white/20 px-4 py-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/90">
+                {product.category}
+              </p>
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-[28px] border border-white/10 bg-slate-900/20 p-1">
+              <ProductImage
+                src={productImage}
+                alt={product.name}
+                width={900}
+                height={560}
+                className="h-72 w-full rounded-[26px] object-cover"
+              />
+            </div>
+
+            <h1 className="mt-6 text-4xl font-bold leading-tight sm:text-5xl">{product.name}</h1>
+
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg">
+              {product.description ||
+                "This page tracks your viewing activity and uses content-based filtering combined with collaborative insights to suggest similar products you might enjoy."}
+            </p>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
+                  Category
+                </p>
+                <p className="mt-2 text-lg font-bold text-white">{product.category}</p>
+              </div>
+              <div className="rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Price</p>
+                <p className="mt-2 text-lg font-bold text-white">
+                  Rs. {productPrice.toLocaleString("en-IN")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col">
+          <div className="rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+            <div className="mb-6">
+              <p className="text-sm font-semibold uppercase tracking-widest text-stone-600">Price</p>
+              <p className="mt-3 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-5xl font-bold text-transparent">
+                Rs. {productPrice.toLocaleString("en-IN")}
+              </p>
+            </div>
+
+            <div className="mb-6 space-y-3 border-y border-stone-200 py-6">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 text-lg" aria-hidden="true">
+                  OK
+                </span>
+                <div>
+                  <p className="font-semibold text-slate-900">Content-Based Recommendations</p>
+                  <p className="text-xs text-stone-600">Products with similar category and price range</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="mt-1 text-lg" aria-hidden="true">
+                  OK
+                </span>
+                <div>
+                  <p className="font-semibold text-slate-900">Collaborative Filtering</p>
+                  <p className="text-xs text-stone-600">
+                    Based on users with similar purchase history
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              className="w-full rounded-full bg-blue-600 py-3 text-lg font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg active:scale-95"
+              onClick={handleOrder}
+              type="button"
+            >
+              Create Order
+            </button>
+
+            <button
+              className="mt-3 w-full rounded-full border border-slate-200 py-3 text-lg font-bold text-slate-900 transition-all hover:border-slate-300 hover:bg-slate-50"
+              onClick={handleAddToCart}
+              type="button"
+            >
+              Add to Cart
+            </button>
+
+            {orderMessage && (
+              <div
+                className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+                  orderMessage.includes("successfully")
+                    ? "border-green-200 bg-green-50 text-green-700"
+                    : "border-red-200 bg-red-50 text-red-700"
+                }`}
+              >
+                {orderMessage.includes("successfully") ? "Success: " : "Error: "}
+                {orderMessage}
+              </div>
+            )}
+
+            {cartMessage ? (
+              <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                {cartMessage}
+              </div>
+            ) : null}
+
+            <p className="mt-6 text-xs text-stone-500">
+              Each purchase you make helps improve personalized recommendations for you.
             </p>
           </div>
-        </section>
-
-        <aside className="panel p-6 sm:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-stone-500">Product Details</p>
-          <p className="mt-4 text-4xl font-bold text-slate-900">Rs. {product.price.toLocaleString("en-IN")}</p>
-          <p className="mt-4 text-base leading-8 text-stone-600">
-            Content-based recommendations use this product&apos;s category and price range. Collaborative recommendations come from purchase overlap across users.
-          </p>
-
-          <button className="button-primary mt-6 w-full" onClick={handleOrder} type="button">
-            Create Order
-          </button>
-
-          {orderMessage ? (
-            <p className="mt-4 text-sm leading-6 text-stone-600">{orderMessage}</p>
-          ) : null}
-        </aside>
+        </div>
       </div>
 
-      <RecommendationSection
-        title="Similar Products"
-        subtitle="These items are generated by the content-based layer using same-category and similar-price logic."
-        products={similarProducts}
-      />
+      <div className="mt-12">
+        <RecommendationSection
+          title="Similar Products"
+          subtitle="These items are recommended using content-based filtering (same category, similar price range). Collaborative recommendations improve as you make more purchases."
+          products={similarProducts}
+        />
+      </div>
     </main>
   );
 }

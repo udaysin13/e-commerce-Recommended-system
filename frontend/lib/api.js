@@ -1,19 +1,31 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    cache: "no-store",
-  });
+  let response;
+
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      cache: "no-store",
+    });
+  } catch (_error) {
+    const networkError = new Error(
+      `Unable to connect to the backend at ${API_URL}. Make sure the API server is running.`
+    );
+    networkError.code = "NETWORK_ERROR";
+    throw networkError;
+  }
 
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error || "Request failed");
+    const requestError = new Error(data.error || "Request failed");
+    requestError.status = response.status;
+    throw requestError;
   }
 
   return data;
@@ -51,6 +63,13 @@ export async function createView(payload) {
 
 export async function createOrder(payload) {
   return request("/order", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function authenticateUser(payload) {
+  return request("/auth", {
     method: "POST",
     body: JSON.stringify(payload),
   });

@@ -1,4 +1,4 @@
-const prisma = require("../lib/prisma");
+const dataStore = require("../lib/dataStore");
 
 async function createOrder(req, res, next) {
   try {
@@ -10,20 +10,15 @@ async function createOrder(req, res, next) {
     }
 
     const [user, product] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId } }),
-      prisma.product.findUnique({ where: { id: productId } }),
+      dataStore.getUserById(userId),
+      dataStore.getProductById(productId),
     ]);
 
     if (!user || !product) {
       return res.status(404).json({ error: "User or product not found." });
     }
 
-    const order = await prisma.order.create({
-      data: {
-        userId,
-        productId,
-      },
-    });
+    const order = await dataStore.createOrder({ userId, productId });
 
     return res.status(201).json({
       message: "Order created successfully",

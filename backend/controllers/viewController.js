@@ -1,4 +1,4 @@
-const prisma = require("../lib/prisma");
+const dataStore = require("../lib/dataStore");
 
 async function createView(req, res, next) {
   try {
@@ -9,12 +9,16 @@ async function createView(req, res, next) {
       return res.status(400).json({ error: "userId and productId are required." });
     }
 
-    const view = await prisma.viewHistory.create({
-      data: {
-        userId,
-        productId,
-      },
-    });
+    const [user, product] = await Promise.all([
+      dataStore.getUserById(userId),
+      dataStore.getProductById(productId),
+    ]);
+
+    if (!user || !product) {
+      return res.status(404).json({ error: "User or product not found." });
+    }
+
+    const view = await dataStore.createView({ userId, productId });
 
     return res.status(201).json({
       message: "View tracked successfully",

@@ -1,4 +1,4 @@
-const prisma = require("../lib/prisma");
+const dataStore = require("../lib/dataStore");
 
 async function authUser(req, res, next) {
   try {
@@ -9,17 +9,13 @@ async function authUser(req, res, next) {
     }
 
     if (mode === "signup") {
-      const existingUser = await prisma.user.findUnique({
-        where: { email },
-      });
+      const existingUser = await dataStore.findUserByEmail(email);
 
       if (existingUser) {
         return res.status(409).json({ error: "Email already exists." });
       }
 
-      const user = await prisma.user.create({
-        data: { email, password },
-      });
+      const user = await dataStore.createUser({ email, password });
 
       return res.status(201).json({
         message: "Signup successful",
@@ -27,9 +23,7 @@ async function authUser(req, res, next) {
       });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email, password },
-    });
+    const user = await dataStore.findUserByCredentials(email, password);
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials." });
