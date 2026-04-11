@@ -1,13 +1,16 @@
 const express = require("express");
 const cartController = require("../controllers/cartController");
+const { requireAuth, requireCartItemOwner, requireSelfFromParam } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.get("/:userId", cartController.getCart);
-router.get("/:userId/total", cartController.getCartTotal);
-router.post("/:userId/items", cartController.addCartItem);
-router.put("/items/:itemId", cartController.updateCartItem);
-router.delete("/items/:itemId", cartController.removeCartItem);
-router.delete("/:userId", cartController.clearCart);
+router.use(requireAuth);
+
+router.get("/:userId", requireSelfFromParam("userId"), cartController.getCart);
+router.get("/:userId/total", requireSelfFromParam("userId"), cartController.getCartTotal);
+router.post("/:userId/items", requireSelfFromParam("userId"), cartController.addCartItem);
+router.put("/items/:itemId", requireCartItemOwner, cartController.updateCartItem);
+router.delete("/items/:itemId", requireCartItemOwner, cartController.removeCartItem);
+router.delete("/:userId", requireSelfFromParam("userId"), cartController.clearCart);
 
 module.exports = router;

@@ -3,9 +3,14 @@ const {
   getContentBasedRecommendations,
   getCollaborativeRecommendations,
   getCategoryBasedRecommendations,
+  getRecommendationOverview,
   getPopularProducts,
   getTrendingProducts,
   getSimilarProducts,
+  getCategorySimilarity,
+  getUsersAlsoBought,
+  getRecentlyViewedProducts,
+  trackProductView,
 } = require("../services/recommendationService");
 const asyncHandler = require("../middleware/asyncHandler");
 
@@ -135,6 +140,49 @@ const getTrendingRecs = asyncHandler(async (req, res) => {
 });
 
 /**
+ * GET /recommendations/recently-viewed/:userId
+ * Recently viewed products for a user
+ */
+const getRecentlyViewedRecs = asyncHandler(async (req, res) => {
+  const userId = Number(req.params.userId);
+  const limit = Number(req.query.limit) || 8;
+
+  if (!userId || userId <= 0) {
+    return res.status(400).json({ error: "Valid userId is required" });
+  }
+
+  const items = await getRecentlyViewedProducts(userId, limit);
+
+  return res.json({
+    recommendations: items,
+    algorithm: "Recently Viewed",
+    description: "Products this user viewed most recently",
+    userId,
+    count: items.length,
+  });
+});
+
+/**
+ * POST /recommendations/track-view
+ * Track a product view for recently viewed and content-based recommendations
+ */
+const trackView = asyncHandler(async (req, res) => {
+  const userId = Number(req.body.userId);
+  const productId = Number(req.body.productId);
+
+  if (!userId || userId <= 0 || !productId || productId <= 0) {
+    return res.status(400).json({ error: "Valid userId and productId are required" });
+  }
+
+  const view = await trackProductView(userId, productId);
+
+  return res.status(201).json({
+    message: "Product view tracked",
+    view,
+  });
+});
+
+/**
  * GET /recommendations/:productId/similar
  * Get similar products to a specific product
  */
@@ -153,6 +201,76 @@ const getSimilarRecs = asyncHandler(async (req, res) => {
     description: "Products similar to the one you're viewing",
     productId,
     count: items.length,
+  });
+});
+
+/**
+ * GET /recommendations/category-similarity/:productId
+ * Category similarity recommendations for a product
+ */
+const getCategorySimilarityRecs = asyncHandler(async (req, res) => {
+  const productId = Number(req.params.productId);
+  const limit = Number(req.query.limit) || 8;
+
+  if (!productId || productId <= 0) {
+    return res.status(400).json({ error: "Valid productId is required" });
+  }
+
+  const items = await getCategorySimilarity(productId, limit);
+
+  return res.json({
+    recommendations: items,
+    algorithm: "Category Similarity",
+    description: "Same-category products with similar price backup",
+    productId,
+    count: items.length,
+  });
+});
+
+/**
+ * GET /recommendations/users-also-bought/:productId
+ * Co-purchase recommendations for a product
+ */
+const getUsersAlsoBoughtRecs = asyncHandler(async (req, res) => {
+  const productId = Number(req.params.productId);
+  const limit = Number(req.query.limit) || 8;
+
+  if (!productId || productId <= 0) {
+    return res.status(400).json({ error: "Valid productId is required" });
+  }
+
+  const items = await getUsersAlsoBought(productId, limit);
+
+  return res.json({
+    recommendations: items,
+    algorithm: "Users Who Bought This Also Bought",
+    description: "Products frequently purchased in the same orders",
+    productId,
+    count: items.length,
+  });
+});
+
+/**
+ * GET /recommendations/:userId/overview
+ * Combined recommendation payload for product detail or home pages
+ */
+const getOverviewRecs = asyncHandler(async (req, res) => {
+  const userId = Number(req.params.userId);
+  const productId = req.query.productId ? Number(req.query.productId) : null;
+  const limit = Number(req.query.limit) || 8;
+
+  if (!userId || userId <= 0) {
+    return res.status(400).json({ error: "Valid userId is required" });
+  }
+
+  const overview = await getRecommendationOverview(userId, productId, limit);
+
+  return res.json({
+    algorithm: "Recommendation Overview",
+    userId,
+    productId,
+    limit,
+    ...overview,
   });
 });
 
@@ -199,6 +317,12 @@ const getRecommendations = asyncHandler(async (req, res) => {
       algorithm = "Trending";
       break;
 
+    case "recent":
+    case "recently-viewed":
+      items = await getRecentlyViewedProducts(userId, limit);
+      algorithm = "Recently Viewed";
+      break;
+
     default:
       items = await getHybridRecommendations(userId, limit);
       algorithm = "Hybrid (Combined)";
@@ -212,7 +336,7 @@ const getRecommendations = asyncHandler(async (req, res) => {
     count: items.length,
     queryParameters: {
       limit,
-      type: "Supported: hybrid, content, collaborative, category, popular, trending",
+      type: "Supported: hybrid, content, collaborative, category, popular, trending, recently-viewed",
     },
   });
 });
@@ -226,4 +350,9 @@ module.exports = {
   getPopularRecs,
   getTrendingRecs,
   getSimilarRecs,
+  getCategorySimilarityRecs,
+  getUsersAlsoBoughtRecs,
+  getRecentlyViewedRecs,
+  getOverviewRecs,
+  trackView,
 };

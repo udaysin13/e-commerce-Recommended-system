@@ -16,17 +16,21 @@ class ApiError extends Error {
  * Catches and formats all errors
  */
 function errorHandler(err, _req, res, _next) {
-  console.error("Error:", {
-    message: err.message,
-    stack: err.stack,
-    statusCode: err.statusCode || 500,
-  });
+  const statusCode = err.statusCode || 500;
+
+  if (statusCode >= 500) {
+    console.error("Error:", {
+      message: err.message,
+      stack: err.stack,
+      statusCode,
+    });
+  }
 
   // If it's an ApiError, use its status code
   if (err instanceof ApiError) {
-    return res.status(err.statusCode).json({
+    return res.status(statusCode).json({
       error: err.message,
-      statusCode: err.statusCode,
+      statusCode,
     });
   }
 

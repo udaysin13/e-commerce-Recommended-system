@@ -8,6 +8,24 @@ import {
 
 const CART_KEY = "shopwise-cart";
 
+function normalizeCartItem(item) {
+  if (!item) return null;
+
+  const product = item.product || item;
+
+  return {
+    ...product,
+    cartItemId: item.cartItemId || item.id,
+    id: product.id || item.productId || item.id,
+    productId: product.id || item.productId || item.id,
+    quantity: item.quantity || 1,
+  };
+}
+
+function normalizeCartItems(items) {
+  return (items || []).map(normalizeCartItem).filter(Boolean);
+}
+
 function readLocalCart() {
   if (typeof window === "undefined") {
     return [];
@@ -32,14 +50,14 @@ function writeLocalCart(items) {
 
 export function getCartItems(userId) {
   if (!userId) {
-    return readLocalCart();
+    return normalizeCartItems(readLocalCart());
   }
 
   return fetchCart(userId)
-    .then((response) => response?.items || [])
+    .then((response) => normalizeCartItems(response?.items || []))
     .catch((error) => {
       console.warn("API cart fetch failed, using local storage:", error.message);
-      return readLocalCart();
+      return normalizeCartItems(readLocalCart());
     });
 }
 
@@ -49,21 +67,27 @@ export function addCartItem(userIdOrProduct, productId, quantity = 1) {
   }
 
   const userId = userIdOrProduct;
+  const product = typeof productId === "object" && productId !== null ? productId : null;
+  const resolvedProductId = product ? product.id : productId;
+
   if (!userId) {
     return readLocalCart();
   }
 
-  return addToCart(userId, productId, quantity).catch((error) => {
+  return addToCart(userId, resolvedProductId, quantity).then((response) => {
+    const item = response?.cartItem || response;
+    return normalizeCartItem(item);
+  }).catch((error) => {
     console.warn("API add to cart failed, using local storage:", error.message);
 
     const cartItems = readLocalCart();
     const existingItem = cartItems.find(
-      (item) => item.id === productId || item.productId === productId
+      (item) => item.id === resolvedProductId || item.productId === resolvedProductId
     );
 
     if (existingItem) {
       const updatedItems = cartItems.map((item) =>
-        item.id === productId || item.productId === productId
+        item.id === resolvedProductId || item.productId === resolvedProductId
           ? { ...item, quantity: item.quantity + quantity }
           : item
       );
@@ -71,9 +95,12 @@ export function addCartItem(userIdOrProduct, productId, quantity = 1) {
       return updatedItems;
     }
 
-    const updatedItems = [...cartItems, { id: productId, productId, quantity }];
+    const updatedItems = [
+      ...cartItems,
+      { ...(product || {}), id: resolvedProductId, productId: resolvedProductId, quantity },
+    ];
     writeLocalCart(updatedItems);
-    return updatedItems;
+    return normalizeCartItems(updatedItems);
   });
 }
 
@@ -82,10 +109,10 @@ export function updateCartItemQuantity(userIdOrItemId, itemIdOrQuantity, maybeQu
     const itemId = userIdOrItemId;
     const quantity = itemIdOrQuantity;
     const updatedItems = readLocalCart()
-      .map((item) => (item.id === itemId ? { ...item, quantity } : item))
+      .map((item) => (item.id === itemId || item.cartItemId === itemId ? { ...item, quantity } : item))
       .filter((item) => item.quantity > 0);
     writeLocalCart(updatedItems);
-    return updatedItems;
+    return normalizeCartItems(updatedItems);
   }
 
   const userId = userIdOrItemId;
@@ -96,8 +123,7 @@ export function updateCartItemQuantity(userIdOrItemId, itemIdOrQuantity, maybeQu
     return updateCartItemQuantity(itemId, quantity);
   }
 
-  const request =
-    quantity > 0 ? updateCartItem(itemId, quantity) : removeFromCart(itemId);
+  const request = quantity > 0 ? updateCartItem(itemId, quantity) : removeFromCart(itemId);
 
   return request
     .then(() => ({ success: true }))
@@ -111,9 +137,11 @@ export function updateCartItemQuantity(userIdOrItemId, itemIdOrQuantity, maybeQu
 export function removeCartItem(userIdOrItemId, maybeItemId) {
   if (maybeItemId === undefined) {
     const itemId = userIdOrItemId;
-    const updatedItems = readLocalCart().filter((item) => item.id !== itemId);
+    const updatedItems = readLocalCart().filter(
+      (item) => item.id !== itemId && item.cartItemId !== itemId
+    );
     writeLocalCart(updatedItems);
-    return updatedItems;
+    return normalizeCartItems(updatedItems);
   }
 
   const userId = userIdOrItemId;
@@ -148,7 +176,7 @@ export function clearCart(userId) {
 }
 
 export function getLocalCartItems() {
-  return readLocalCart();
+  return normalizeCartItems(readLocalCart());
 }
 
 export function addLocalCartItem(product) {

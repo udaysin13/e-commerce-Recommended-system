@@ -34,6 +34,7 @@ export default function LoginClient() {
 
       if (typeof window !== "undefined") {
         window.localStorage.setItem("shopwise-user", JSON.stringify(response.user));
+        window.localStorage.setItem("shopwise-token", response.token);
       }
 
       setSuccess(response.message || (mode === "login" ? "Login successful" : "Signup successful"));

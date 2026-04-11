@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { getCurrentUserId, isAuthenticated } from "../lib/auth";
+import { addCartItem } from "../lib/cart";
 import ProductImage from "./ProductImage";
 
 export default function ProductCard({ product, caption, isLoading = false, error = null, onRetry }) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
 
   if (isLoading) {
     return <ProductCardSkeleton />;
@@ -36,6 +40,19 @@ export default function ProductCard({ product, caption, isLoading = false, error
   const reviews = Number(product.reviews || 120);
   const badge = product.badge || (discount ? "Deal" : "Popular");
   const productHref = product.id ? `/products/${product.id}` : "/";
+
+  async function handleAddToCart() {
+    if (!product?.id) return;
+
+    try {
+      setAdding(true);
+      await addCartItem(isAuthenticated() ? getCurrentUserId() : null, product, 1);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1800);
+    } finally {
+      setAdding(false);
+    }
+  }
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-[#2874f0] hover:shadow-md">
@@ -109,12 +126,14 @@ export default function ProductCard({ product, caption, isLoading = false, error
           >
             Details
           </Link>
-          <Link
-            href={productHref}
-            className="rounded bg-yellow-400 px-3 py-2 text-center text-sm font-bold text-slate-950 transition hover:bg-yellow-300"
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={adding}
+            className="rounded bg-yellow-400 px-3 py-2 text-center text-sm font-bold text-slate-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            Buy now
-          </Link>
+            {adding ? "Adding" : added ? "Added" : "Add"}
+          </button>
         </div>
       </div>
     </article>

@@ -2,7 +2,13 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { fetchProducts, fetchRecommendations } from "../lib/api";
+import {
+  fetchCategorySimilarity,
+  fetchProducts,
+  fetchRecentlyViewedProducts,
+  fetchRecommendations,
+} from "../lib/api";
+import { getCurrentUserId, isAuthenticated } from "../lib/auth";
 import { dummyProducts, getRecommendedProducts, getTrendingProducts } from "../lib/dummyData";
 import CategoryGrid from "./CategoryGrid";
 import FeaturedProducts from "./FeaturedProducts";
@@ -12,13 +18,14 @@ import LoadingGrid from "./LoadingGrid";
 import ProductCard from "./ProductCard";
 import TestimonialSection from "./TestimonialSection";
 
-const demoUserId = 1;
 const categories = ["Electronics", "Fashion", "Home", "Beauty"];
 const dealChips = ["Mobiles", "Appliances", "Sports", "Books", "Best sellers", "New arrivals"];
 
 export default function HomeClientEnhanced() {
   const [products, setProducts] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [becauseYouViewed, setBecauseYouViewed] = useState([]);
+  const [becauseSource, setBecauseSource] = useState(null);
   const [activeCategory, setActiveCategory] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -41,6 +48,8 @@ export default function HomeClientEnhanced() {
 
         let productData = [];
         let recommendationData = [];
+        let becauseData = [];
+        let becauseSourceData = null;
         const filteredDummyProducts = dummyProducts.filter((product) => {
           const matchesSearch = search
             ? product.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -53,7 +62,9 @@ export default function HomeClientEnhanced() {
         try {
           const [productResult, recommendationResult] = await Promise.allSettled([
             fetchProducts({ page, limit: 8, search, category }),
-            fetchRecommendations(demoUserId),
+            isAuthenticated()
+              ? fetchRecommendations(getCurrentUserId())
+              : Promise.resolve({ recommendations: getRecommendedProducts(4) }),
           ]);
 
           productData =
@@ -67,22 +78,47 @@ export default function HomeClientEnhanced() {
                 recommendationResult.value?.items ||
                 getRecommendedProducts(4)
               : getRecommendedProducts(4);
+
+          const viewedProduct = await getViewedProduct(productData, filteredDummyProducts);
+          if (viewedProduct?.id) {
+            try {
+              const becauseResponse = await fetchCategorySimilarity(viewedProduct.id, 4);
+              becauseData =
+                becauseResponse?.recommendations ||
+                becauseResponse?.items ||
+                [];
+              becauseSourceData = viewedProduct;
+            } catch (becauseError) {
+              console.warn("Because-you-viewed recommendations failed:", becauseError.message);
+              becauseData = getFallbackBecauseProducts(viewedProduct);
+              becauseSourceData = viewedProduct;
+            }
+          }
         } catch (apiError) {
           console.warn("API error, using dummy data:", apiError);
           productData = filteredDummyProducts;
           recommendationData = getRecommendedProducts(4);
+          const viewedProduct = filteredDummyProducts[0] || dummyProducts[0];
+          becauseData = getFallbackBecauseProducts(viewedProduct);
+          becauseSourceData = viewedProduct;
         }
 
         setProducts(productData.length > 0 ? productData : filteredDummyProducts);
         setRecommendations(
           recommendationData.length > 0 ? recommendationData : getRecommendedProducts(4)
         );
+        setBecauseYouViewed(
+          becauseData.length > 0 ? becauseData : getFallbackBecauseProducts(becauseSourceData)
+        );
+        setBecauseSource(becauseSourceData);
         setTotalPages(Math.max(1, Math.ceil((productData.length || filteredDummyProducts.length) / 8)));
       } catch (err) {
         console.error("Error loading data:", err);
         setError(err.message || "Unable to load products.");
         setProducts(dummyProducts.slice(0, 8));
         setRecommendations(getRecommendedProducts(4));
+        setBecauseSource(dummyProducts[0]);
+        setBecauseYouViewed(getFallbackBecauseProducts(dummyProducts[0]));
         setTotalPages(1);
       } finally {
         setLoading(false);
@@ -130,6 +166,7 @@ export default function HomeClientEnhanced() {
 
   const recommendationItems =
     recommendations.length > 0 ? recommendations.slice(0, 4) : getRecommendedProducts(4);
+  const becauseItems = becauseYouViewed.slice(0, 4);
 
   return (
     <main className="bg-slate-100 pb-12">
@@ -205,6 +242,36 @@ export default function HomeClientEnhanced() {
             ))}
           </div>
         </section>
+
+        {becauseSource && becauseItems.length > 0 ? (
+          <section className="rounded-lg bg-slate-950 p-4 text-white shadow-sm">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase text-yellow-300">
+                  AI recommendation
+                </p>
+                <h2 className="mt-1 text-2xl font-bold">
+                  Because you viewed {becauseSource.name}
+                </h2>
+                <p className="mt-1 max-w-3xl text-sm text-slate-300">
+                  We matched category, price range, and recent shopping signals to surface better next picks.
+                </p>
+              </div>
+              <span className="rounded bg-yellow-300 px-3 py-2 text-xs font-black text-slate-950">
+                Personalized homepage
+              </span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {becauseItems.map((product) => (
+                <ProductCard
+                  key={`because-${becauseSource.id}-${product.id}`}
+                  product={product}
+                  caption={product.recommendedBecause || `Similar to ${becauseSource.name}`}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section id="products" className="rounded-lg bg-white p-4 shadow-sm">
           <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
@@ -300,4 +367,36 @@ export default function HomeClientEnhanced() {
       </div>
     </main>
   );
+}
+
+async function getViewedProduct(productData, fallbackProducts) {
+  if (isAuthenticated()) {
+    try {
+      const recentResponse = await fetchRecentlyViewedProducts(getCurrentUserId(), 1);
+      const [recentProduct] =
+        recentResponse?.recommendations ||
+        recentResponse?.items ||
+        [];
+
+      if (recentProduct) {
+        return recentProduct;
+      }
+    } catch (error) {
+      console.warn("Recently viewed lookup failed:", error.message);
+    }
+  }
+
+  return productData[0] || fallbackProducts[0] || dummyProducts[0];
+}
+
+function getFallbackBecauseProducts(sourceProduct) {
+  if (!sourceProduct) {
+    return getRecommendedProducts(4);
+  }
+
+  const sameCategory = dummyProducts.filter(
+    (product) => product.category === sourceProduct.category && product.id !== sourceProduct.id
+  );
+
+  return (sameCategory.length > 0 ? sameCategory : getRecommendedProducts(4)).slice(0, 4);
 }

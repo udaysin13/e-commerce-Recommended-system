@@ -1,5 +1,13 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+function getAuthToken() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.localStorage.getItem("shopwise-token") || "";
+}
+
 /**
  * Generic request handler with error handling
  */
@@ -11,6 +19,7 @@ async function request(path, options = {}) {
       ...options,
       headers: {
         "Content-Type": "application/json",
+        ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
         ...(options.headers || {}),
       },
       cache: "no-store",
@@ -127,10 +136,50 @@ export async function fetchTrendingProducts(limit = 8) {
 }
 
 /**
+ * Get recently viewed products for a user
+ */
+export async function fetchRecentlyViewedProducts(userId, limit = 8) {
+  return request(`/recommendations/recently-viewed/${userId}?limit=${limit}`);
+}
+
+/**
  * Get similar products to a specific product
  */
 export async function fetchSimilarProducts(productId, limit = 8) {
   return request(`/recommendations/similar/${productId}?limit=${limit}`);
+}
+
+/**
+ * Get same-category and similar-price products
+ */
+export async function fetchCategorySimilarity(productId, limit = 8) {
+  return request(`/recommendations/category-similarity/${productId}?limit=${limit}`);
+}
+
+/**
+ * Get products commonly bought together with a product
+ */
+export async function fetchUsersAlsoBoughtProducts(productId, limit = 8) {
+  return request(`/recommendations/users-also-bought/${productId}?limit=${limit}`);
+}
+
+/**
+ * Get all recommendation groups for a user/product in one request
+ */
+export async function fetchRecommendationOverview(userId, productId, limit = 8) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (productId) params.append("productId", String(productId));
+  return request(`/recommendations/${userId}/overview?${params.toString()}`);
+}
+
+/**
+ * Track a product view for recently viewed and content-based recommendations
+ */
+export async function trackRecommendationView(userId, productId) {
+  return request("/recommendations/track-view", {
+    method: "POST",
+    body: JSON.stringify({ userId, productId }),
+  });
 }
 
 // ============ CART ============
@@ -171,10 +220,15 @@ export async function getCartTotal(userId) {
 
 // ============ ORDERS ============
 
-export async function createOrder(userId) {
+export async function createOrder(userIdOrPayload) {
+  const payload =
+    typeof userIdOrPayload === "object" && userIdOrPayload !== null
+      ? userIdOrPayload
+      : { userId: userIdOrPayload };
+
   return request("/orders", {
     method: "POST",
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -202,7 +256,7 @@ export async function cancelOrder(orderId) {
 // ============ USERS ============
 
 export async function registerUser(email, password, name) {
-  return request("/users/register", {
+  return request("/auth/signup", {
     method: "POST",
     body: JSON.stringify({ email, password, name }),
   });
@@ -326,10 +380,7 @@ export async function fetchProductAnalytics(productId) {
  * @param {number} productId - Product ID
  */
 export async function trackProductView(userId, productId) {
-  return request(`/advanced-recommendations/track-view`, {
-    method: "POST",
-    body: JSON.stringify({ userId, productId }),
-  });
+  return trackRecommendationView(userId, productId);
 }
 
 /**

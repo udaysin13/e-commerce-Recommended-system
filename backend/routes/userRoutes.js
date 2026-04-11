@@ -6,6 +6,7 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
+const { requireAuth, requireSelfFromParam } = require("../middleware/authMiddleware");
 const { validateUserRegistration, validatePagination } = require("../middleware/validators");
 
 /**
@@ -18,30 +19,30 @@ router.post("/register", validateUserRegistration, userController.register);
  * GET /users/:userId
  * Get user profile
  */
-router.get("/:userId", userController.getProfile);
+router.get("/:userId", requireAuth, requireSelfFromParam("userId"), userController.getProfile);
 
 /**
  * PUT /users/:userId
  * Update user profile
  */
-router.put("/:userId", userController.updateProfile);
+router.put("/:userId", requireAuth, requireSelfFromParam("userId"), userController.updateProfile);
 
 /**
  * GET /users/:userId/orders
  * Get user's order history
  */
-router.get("/:userId/orders", validatePagination, userController.getUserOrders);
+router.get("/:userId/orders", requireAuth, requireSelfFromParam("userId"), validatePagination, userController.getUserOrders);
 
 /**
  * GET /users/:userId/history
  * Get user's view history
  */
-router.get("/:userId/history", validatePagination, userController.getUserHistory);
+router.get("/:userId/history", requireAuth, requireSelfFromParam("userId"), validatePagination, userController.getUserHistory);
 
 /**
  * DELETE /users/:userId
  * Delete user account
  */
-router.delete("/:userId", userController.deleteAccount);
+router.delete("/:userId", requireAuth, requireSelfFromParam("userId"), userController.deleteAccount);
 
 module.exports = router;

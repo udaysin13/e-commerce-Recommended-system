@@ -2,17 +2,26 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { createOrder, fetchProductById, fetchSimilarProducts, fetchUserHistory } from "../lib/api";
+import {
+  createOrder,
+  fetchCategorySimilarity,
+  fetchProductById,
+  fetchRecentlyViewedProducts,
+  fetchSimilarProducts,
+  fetchUsersAlsoBoughtProducts,
+  trackRecommendationView,
+} from "../lib/api";
+import { getCurrentUserId, isAuthenticated } from "../lib/auth";
 import { addCartItem } from "../lib/cart";
 import LoadingGrid from "./LoadingGrid";
 import ProductImage from "./ProductImage";
 import RecommendationSection from "./RecommendationSection";
 
-const demoUserId = 1;
-
 export default function ProductDetailClient({ productId }) {
   const [product, setProduct] = useState(null);
   const [similarProducts, setSimilarProducts] = useState([]);
+  const [usersAlsoBought, setUsersAlsoBought] = useState([]);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [missingProduct, setMissingProduct] = useState(false);
@@ -33,28 +42,59 @@ export default function ProductDetailClient({ productId }) {
         const productData = productResponse?.product || productResponse?.item || productResponse;
         setProduct(productData || null);
 
-        // Fetch similar products
+        // Fetch recommendation groups
         try {
-          const similarResponse = await fetchSimilarProducts(Number(productId));
+          const [similarResponse, alsoBoughtResponse, recentResponse] =
+            await Promise.allSettled([
+              fetchCategorySimilarity(Number(productId)),
+              fetchUsersAlsoBoughtProducts(Number(productId)),
+              isAuthenticated()
+                ? fetchRecentlyViewedProducts(getCurrentUserId())
+                : Promise.resolve({ recommendations: [] }),
+            ]);
+
+          const fallbackSimilarResponse = await fetchSimilarProducts(Number(productId));
           const similarItems =
-            similarResponse?.recommendations || similarResponse?.items || [];
+            (similarResponse.status === "fulfilled"
+              ? similarResponse.value?.recommendations || similarResponse.value?.items
+              : null) ||
+            fallbackSimilarResponse?.recommendations ||
+            fallbackSimilarResponse?.items ||
+            [];
+          const alsoBoughtItems =
+            alsoBoughtResponse.status === "fulfilled"
+              ? alsoBoughtResponse.value?.recommendations || alsoBoughtResponse.value?.items || []
+              : [];
+          const recentItems =
+            recentResponse.status === "fulfilled"
+              ? recentResponse.value?.recommendations || recentResponse.value?.items || []
+              : [];
+
           setSimilarProducts(Array.isArray(similarItems) ? similarItems : []);
+          setUsersAlsoBought(Array.isArray(alsoBoughtItems) ? alsoBoughtItems : []);
+          setRecentlyViewed(Array.isArray(recentItems) ? recentItems : []);
         } catch (err) {
-          console.warn("Could not fetch similar products:", err.message);
+          console.warn("Could not fetch recommendations:", err.message);
           setSimilarProducts([]);
+          setUsersAlsoBought([]);
+          setRecentlyViewed([]);
         }
 
         // Track product view (don't block if this fails)
-        try {
-          await fetchUserHistory(demoUserId);
-        } catch (err) {
-          console.warn("Could not track view:", err.message);
+        if (isAuthenticated()) {
+          try {
+            await trackRecommendationView(getCurrentUserId(), Number(productId));
+          } catch (err) {
+            console.warn("Could not track view:", err.message);
+          }
         }
       } catch (err) {
         setMissingProduct(err?.status === 404);
         setError(err.message || "Unable to load product.");
         setProduct(null);
         setSimilarProducts([]);
+        setUsersAlsoBought([]);
+        setRecentlyViewed([]);
       } finally {
         setLoading(false);
       }
@@ -69,7 +109,11 @@ export default function ProductDetailClient({ productId }) {
     try {
       setOrderMessage("");
       setCreatingOrder(true);
-      await createOrder(demoUserId);
+      if (!isAuthenticated()) {
+        setOrderMessage("Please login before creating an order.");
+        return;
+      }
+      await createOrder(getCurrentUserId());
       setOrderMessage(
         "✓ Order created successfully! Collaborative recommendations will improve after more purchases."
       );
@@ -89,7 +133,7 @@ export default function ProductDetailClient({ productId }) {
     try {
       setCartMessage("");
       setAddingToCart(true);
-      await addCartItem(demoUserId, product.id, 1);
+      await addCartItem(isAuthenticated() ? getCurrentUserId() : null, product, 1);
       setCartMessage("✓ Added to cart successfully!");
       setTimeout(() => setCartMessage(""), 3000);
     } catch (err) {
@@ -274,9 +318,25 @@ export default function ProductDetailClient({ productId }) {
 
       <div className="mt-12">
         <RecommendationSection
-          title="Similar Products"
-          subtitle="These items are recommended using content-based filtering (same category, similar price range). Collaborative recommendations improve as you make more purchases."
+          title="Users Who Bought This Also Bought"
+          subtitle="Products frequently purchased with this item."
+          products={usersAlsoBought}
+        />
+      </div>
+
+      <div className="mt-12">
+        <RecommendationSection
+          title="Category Similarity"
+          subtitle="Same-category products with similar-price backup."
           products={similarProducts}
+        />
+      </div>
+
+      <div className="mt-12">
+        <RecommendationSection
+          title="Recently Viewed"
+          subtitle="Your latest product views help tune recommendations."
+          products={recentlyViewed}
         />
       </div>
     </main>

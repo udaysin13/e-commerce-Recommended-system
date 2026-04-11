@@ -1,11 +1,168 @@
 const prisma = require("../lib/prisma");
 const dataStore = require("../lib/dataStore");
 
+function uniqueByProductId(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    if (!item || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
 /**
  * Get similar products based on category and price
  */
 async function getSimilarProducts(productId) {
   return dataStore.getSimilarProducts(productId);
+}
+
+/**
+ * Category similarity
+ * Recommends products from the same category, then nearby price range.
+ */
+async function getCategorySimilarity(productId, limit = 8) {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) return [];
+
+    const minPrice = Math.max(0, product.price * 0.75);
+    const maxPrice = product.price * 1.25;
+
+    const [sameCategory, nearbyPrice] = await Promise.all([
+      prisma.product.findMany({
+        where: {
+          id: { not: productId },
+          category: product.category,
+        },
+        orderBy: [{ rating: "desc" }, { reviews: "desc" }, { id: "asc" }],
+        take: limit,
+      }),
+      prisma.product.findMany({
+        where: {
+          id: { not: productId },
+          category: { not: product.category },
+          price: { gte: minPrice, lte: maxPrice },
+        },
+        orderBy: [{ rating: "desc" }, { reviews: "desc" }, { id: "asc" }],
+        take: limit,
+      }),
+    ]);
+
+    return uniqueByProductId([...sameCategory, ...nearbyPrice])
+      .slice(0, limit)
+      .map((item) => ({
+        ...item,
+        recommendedBecause:
+          item.category === product.category ? "Same category" : "Similar price range",
+        similaritySource: item.category === product.category ? "category" : "price",
+      }));
+  } catch (error) {
+    console.warn("Category similarity failed:", error.message);
+    return getSimilarProducts(productId);
+  }
+}
+
+/**
+ * Users who bought this also bought
+ * Finds products from orders that include the current product.
+ */
+async function getUsersAlsoBought(productId, limit = 8) {
+  try {
+    const relatedOrders = await prisma.orderItem.findMany({
+      where: { productId },
+      select: { orderId: true },
+      distinct: ["orderId"],
+      take: 100,
+    });
+
+    const orderIds = relatedOrders.map((item) => item.orderId);
+
+    if (!orderIds.length) {
+      return getCategorySimilarity(productId, limit);
+    }
+
+    const coPurchases = await prisma.orderItem.groupBy({
+      by: ["productId"],
+      where: {
+        orderId: { in: orderIds },
+        productId: { not: productId },
+      },
+      _count: { productId: true },
+      orderBy: {
+        _count: {
+          productId: "desc",
+        },
+      },
+      take: limit,
+    });
+
+    const coPurchaseIds = coPurchases.map((item) => item.productId);
+
+    if (!coPurchaseIds.length) {
+      return getCategorySimilarity(productId, limit);
+    }
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: coPurchaseIds } },
+    });
+    const countByProductId = new Map(
+      coPurchases.map((item) => [item.productId, item._count.productId])
+    );
+
+    return coPurchaseIds
+      .map((id) => products.find((product) => product.id === id))
+      .filter(Boolean)
+      .map((product) => {
+        const purchaseCount = countByProductId.get(product.id) || 0;
+        return {
+          ...product,
+          coPurchaseCount: purchaseCount,
+          confidence: Math.min(100, purchaseCount * 25),
+          recommendedBecause: `Bought together ${purchaseCount} time${purchaseCount === 1 ? "" : "s"}`,
+        };
+      });
+  } catch (error) {
+    console.warn("Users also bought recommendation failed:", error.message);
+    return getCategorySimilarity(productId, limit);
+  }
+}
+
+/**
+ * Recently viewed logic
+ * Returns a user's most recent unique product views.
+ */
+async function getRecentlyViewedProducts(userId, limit = 8) {
+  try {
+    const views = await prisma.viewHistory.findMany({
+      where: { userId },
+      include: { product: true },
+      orderBy: { viewedAt: "desc" },
+      take: limit * 3,
+    });
+
+    const products = uniqueByProductId(views.map((view) => view.product));
+
+    return products.slice(0, limit).map((product) => ({
+      ...product,
+      recommendedBecause: "Recently viewed",
+    }));
+  } catch (error) {
+    console.warn("Recently viewed query failed:", error.message);
+    return [];
+  }
+}
+
+async function trackProductView(userId, productId) {
+  return prisma.viewHistory.create({
+    data: {
+      userId,
+      productId,
+    },
+  });
 }
 
 /**
@@ -183,15 +340,57 @@ async function getPopularProducts(limit = 8) {
  */
 async function getTrendingProducts(limit = 8) {
   try {
+    const recentSince = new Date(Date.now() - 1000 * 60 * 60 * 24 * 14);
+    const [recentViews, recentPurchases, newestProducts] = await Promise.all([
+      prisma.viewHistory.groupBy({
+        by: ["productId"],
+        where: { viewedAt: { gte: recentSince } },
+        _count: { productId: true },
+      }),
+      prisma.orderItem.groupBy({
+        by: ["productId"],
+        where: { createdAt: { gte: recentSince } },
+        _count: { productId: true },
+      }),
+      prisma.product.findMany({
+        orderBy: [{ createdAt: "desc" }, { rating: "desc" }, { reviews: "desc" }],
+        take: limit * 2,
+      }),
+    ]);
+
+    const scores = new Map();
+    recentViews.forEach((item) => {
+      scores.set(item.productId, (scores.get(item.productId) || 0) + item._count.productId);
+    });
+    recentPurchases.forEach((item) => {
+      scores.set(item.productId, (scores.get(item.productId) || 0) + item._count.productId * 3);
+    });
+
+    const productIds = [...new Set([...scores.keys(), ...newestProducts.map((item) => item.id)])];
     const products = await prisma.product.findMany({
-      where: {
-        rating: { gte: 4 },
-      },
-      orderBy: [{ createdAt: "desc" }, { rating: "desc" }],
+      where: { id: { in: productIds } },
+    });
+
+    const ranked = products
+      .map((product) => ({
+        ...product,
+        trendingScore:
+          (scores.get(product.id) || 0) + (product.rating || 0) * 2 + Math.log((product.reviews || 0) + 1),
+        recommendedBecause: "Trending from recent views and purchases",
+      }))
+      .sort((a, b) => b.trendingScore - a.trendingScore)
+      .slice(0, limit);
+
+    if (ranked.length > 0) {
+      return ranked;
+    }
+
+    const fallback = await prisma.product.findMany({
+      orderBy: [{ rating: "desc" }, { reviews: "desc" }, { createdAt: "desc" }],
       take: limit,
     });
 
-    return products.map((product) => ({
+    return fallback.map((product) => ({
       ...product,
       recommendedBecause: "Trending now",
     }));
@@ -199,6 +398,30 @@ async function getTrendingProducts(limit = 8) {
     console.warn("Trending products query failed:", error.message);
     return getPopularProducts(limit);
   }
+}
+
+async function getRecommendationOverview(userId, productId, limit = 8) {
+  const [
+    usersAlsoBought,
+    categorySimilarity,
+    recentlyViewed,
+    trending,
+    hybrid,
+  ] = await Promise.all([
+    productId ? getUsersAlsoBought(productId, limit) : Promise.resolve([]),
+    productId ? getCategorySimilarity(productId, limit) : Promise.resolve([]),
+    getRecentlyViewedProducts(userId, limit),
+    getTrendingProducts(limit),
+    getHybridRecommendations(userId, limit),
+  ]);
+
+  return {
+    usersAlsoBought,
+    categorySimilarity,
+    recentlyViewed,
+    trending,
+    hybrid,
+  };
 }
 
 /**
@@ -261,9 +484,14 @@ module.exports = {
   getContentBasedRecommendations,
   getCollaborativeRecommendations,
   getCategoryBasedRecommendations,
+  getRecommendationOverview,
 
   // Specific types
   getPopularProducts,
   getTrendingProducts,
   getSimilarProducts,
+  getCategorySimilarity,
+  getUsersAlsoBought,
+  getRecentlyViewedProducts,
+  trackProductView,
 };

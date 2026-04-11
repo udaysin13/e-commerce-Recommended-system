@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createOrder } from "../lib/api";
+import { getCurrentUserId, isAuthenticated } from "../lib/auth";
 import { clearCart, getCartItems, removeCartItem, updateCartItemQuantity } from "../lib/cart";
 import ProductImage from "./ProductImage";
-
-const demoUserId = 1;
 
 export default function CartClient() {
   const [items, setItems] = useState([]);
@@ -14,7 +13,18 @@ export default function CartClient() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setItems(getCartItems());
+    let isMounted = true;
+    const userId = getCurrentUserId();
+
+    getCartItems(isAuthenticated() ? userId : null).then((cartItems) => {
+      if (isMounted) {
+        setItems(cartItems);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -28,16 +38,14 @@ export default function CartClient() {
     setMessage("");
 
     try {
-      for (const item of items) {
-        for (let index = 0; index < item.quantity; index += 1) {
-          await createOrder({
-            userId: demoUserId,
-            productId: item.id,
-          });
-        }
+      if (!isAuthenticated()) {
+        setMessage("Please login before checkout.");
+        return;
       }
 
-      clearCart();
+      const userId = getCurrentUserId();
+      await createOrder(userId);
+      await clearCart(userId);
       setItems([]);
       setMessage("Order placed successfully. Your cart is now empty.");
     } catch (error) {
@@ -97,7 +105,12 @@ export default function CartClient() {
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
-                        onClick={() => setItems(updateCartItemQuantity(item.id, item.quantity - 1))}
+                        onClick={async () => {
+                          const itemId = item.cartItemId || item.id;
+                          const userId = getCurrentUserId();
+                          await updateCartItemQuantity(isAuthenticated() ? userId : null, itemId, item.quantity - 1);
+                          setItems(await getCartItems(isAuthenticated() ? userId : null));
+                        }}
                         className="h-10 w-10 rounded-full border border-slate-200 text-lg font-semibold text-slate-900"
                       >
                         -
@@ -107,7 +120,12 @@ export default function CartClient() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setItems(updateCartItemQuantity(item.id, item.quantity + 1))}
+                        onClick={async () => {
+                          const itemId = item.cartItemId || item.id;
+                          const userId = getCurrentUserId();
+                          await updateCartItemQuantity(isAuthenticated() ? userId : null, itemId, item.quantity + 1);
+                          setItems(await getCartItems(isAuthenticated() ? userId : null));
+                        }}
                         className="h-10 w-10 rounded-full border border-slate-200 text-lg font-semibold text-slate-900"
                       >
                         +
@@ -120,7 +138,12 @@ export default function CartClient() {
                       </p>
                       <button
                         type="button"
-                        onClick={() => setItems(removeCartItem(item.id))}
+                        onClick={async () => {
+                          const itemId = item.cartItemId || item.id;
+                          const userId = getCurrentUserId();
+                          await removeCartItem(isAuthenticated() ? userId : null, itemId);
+                          setItems(await getCartItems(isAuthenticated() ? userId : null));
+                        }}
                         className="text-sm font-semibold text-red-600 hover:text-red-700"
                       >
                         Remove
