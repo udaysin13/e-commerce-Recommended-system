@@ -1,6 +1,30 @@
-const prisma = require("../lib/prisma");
-const dataStore = require("../lib/dataStore");
+/**
+ * Recommendation Service
+ * Advanced recommendation algorithms:
+ * - Collaborative Filtering (user-based)
+ * - Content-Based Filtering (product similarity)
+ * - Hybrid Approach (combination of above)
+ * - Trending Products (time-weighted popularity)
+ * - Category-Based (user's favorite categories)
+ */
 
+const prisma = require("../lib/prisma");
+const logger = require("../utils/logger");
+const {
+  calculateProductSimilarity,
+  calculateCollaborativeScore,
+  calculateCoPurchaseConfidence,
+  calculateEngagementScore,
+  getTimeDecayFactor,
+  mergeAndDeduplicateProducts,
+  sortByScore,
+  measureExecutionTime,
+} = require("../utils/helpers");
+const { CONFIG } = require("../config/config");
+
+/**
+ * Remove duplicate products from array
+ */
 function uniqueByProductId(items) {
   const seen = new Set();
   return items.filter((item) => {
@@ -11,10 +35,99 @@ function uniqueByProductId(items) {
 }
 
 /**
- * Get similar products based on category and price
+ * ALGORITHM 1: Content-Based Recommendations
+ * Recommends products similar to ones user has viewed or purchased
+ * Based on: category, price range, ratings
  */
-async function getSimilarProducts(productId) {
-  return dataStore.getSimilarProducts(productId);
+async function getContentBasedRecommendations(userId, limit = 8) {
+  const { result: recommendations } = await measureExecutionTime(async () => {
+    try {
+      // Get user's recent interactions (views and purchases)
+      const [viewedProducts, purchasedProducts] = await Promise.all([
+        prisma.viewHistory.findMany({
+          where: { userId },
+          include: { product: true },
+          orderBy: { viewedAt: "desc" },
+          take: 10,
+        }),
+        prisma.orderItem.findMany({
+          where: { userId },
+          include: { product: true },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        }),
+      ]);
+
+      if (viewedProducts.length === 0 && purchasedProducts.length === 0) {
+        return getPopularProducts(limit);
+      }
+
+      // Combine and deduplicate user's products
+      const userProducts = uniqueByProductId([
+        ...viewedProducts.map((v) => v.product),
+        ...purchasedProducts.map((o) => o.product),
+      ]);
+
+      // Extract categories and calculate average price
+      const categories = [...new Set(userProducts.map((p) => p.category))];
+      const avgPrice =
+        userProducts.reduce((sum, p) => sum + p.price, 0) / userProducts.length;
+
+      // Find similar products
+      const similarProducts = await prisma.product.findMany({
+        where: {
+          id: { notIn: userProducts.map((p) => p.id) },
+          OR: [
+            { category: { in: categories } },
+            {
+              price: {
+                gte: Math.max(0, avgPrice * 0.7),
+                lte: avgPrice * 1.3,
+              },
+            },
+          ],
+        },
+        take: limit * 2,
+      });
+
+      // Score products based on similarity to user's preferences
+      const scored = similarProducts.map((product) => {
+        let score = 0;
+
+        // Category match bonus
+        if (categories.includes(product.category)) {
+          score += 35;
+        }
+
+        // Price range bonus
+        const priceDiff = Math.abs(product.price - avgPrice);
+        const priceScore = Math.max(0, 30 * (1 - priceDiff / (avgPrice || 100)));
+        score += priceScore;
+
+        // Rating bonus
+        const ratingScore = (product.rating || 0) * 5;
+        score += Math.min(20, ratingScore);
+
+        // Popularity bonus
+        const popularityScore = Math.min(15, (product.reviews || 0) / 100);
+        score += popularityScore;
+
+        return {
+          ...product,
+          score,
+          recommendedBecause: "Based on your browsing and purchase history",
+          algorithm: "content-based",
+        };
+      });
+
+      return sortByScore(scored).slice(0, limit);
+    } catch (error) {
+      logger.error("Content-based recommendation failed", error);
+      return getPopularProducts(limit);
+    }
+  }, "Content-Based Recommendation");
+
+  return recommendations;
 }
 
 /**

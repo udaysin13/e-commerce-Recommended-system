@@ -21,6 +21,10 @@ const {
   getOverviewRecs,
   trackView,
 } = require("../controllers/recommendationController");
+const {
+  getRecommendations: getCollaborativeFilteringRecs,
+  analyzeSimilarity,
+} = require("../controllers/collaborativeFilteringController");
 
 /**
  * POST /recommendations/track-view
@@ -87,6 +91,25 @@ router.get("/:userId/content-based", requireAuth, requireSelfFromParam("userId")
  * Collaborative recommendations
  */
 router.get("/:userId/collaborative", requireAuth, requireSelfFromParam("userId"), getCollaborativeRecs);
+
+/**
+ * GET /recommendations/:userId/collaborative-filtering
+ * Advanced collaborative filtering with cosine similarity
+ * Query Parameters:
+ *   - topK: Number of similar users (default: 10, max: 100)
+ *   - minSimilarity: Minimum similarity threshold (default: 0.3, range: 0-1)
+ *   - limit: Number of recommendations (default: 10, max: 50)
+ * Example:
+ *   GET /recommendations/1/collaborative-filtering?topK=15&minSimilarity=0.4&limit=20
+ */
+router.get("/:userId/collaborative-filtering", requireAuth, requireSelfFromParam("userId"), getCollaborativeFilteringRecs);
+
+/**
+ * GET /recommendations/:userId/collaborative-filtering/analysis
+ * Analyze user similarity distribution (debug endpoint)
+ * Returns average similarity scores and distribution analysis
+ */
+router.get("/:userId/collaborative-filtering/analysis", requireAuth, requireSelfFromParam("userId"), analyzeSimilarity);
 
 /**
  * GET /recommendations/:userId/category
