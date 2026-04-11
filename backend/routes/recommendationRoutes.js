@@ -25,6 +25,11 @@ const {
   getRecommendations: getCollaborativeFilteringRecs,
   analyzeSimilarity,
 } = require("../controllers/collaborativeFilteringController");
+const {
+  getRecommendations: getContentBasedRecs2,
+  analyzeRecommendation,
+  getSimilar,
+} = require("../controllers/contentBasedRecommendationController");
 
 /**
  * POST /recommendations/track-view
@@ -54,7 +59,7 @@ router.get("/recently-viewed/:userId", requireAuth, requireSelfFromParam("userId
  * GET /recommendations/similar/:productId
  * Get similar products to a specific product
  */
-router.get("/similar/:productId", getSimilarRecs);
+router.get("/similar/:productId", getSimilar);
 
 /**
  * GET /recommendations/category-similarity/:productId
@@ -85,6 +90,26 @@ router.get("/:userId/hybrid", requireAuth, requireSelfFromParam("userId"), getHy
  * Content-based recommendations
  */
 router.get("/:userId/content-based", requireAuth, requireSelfFromParam("userId"), getContentBasedRecs);
+
+/**
+ * GET /recommendations/:userId/content-based-v2
+ * Advanced content-based filtering
+ * Query Parameters:
+ *   - minScore: Minimum similarity score (default: 0.3, range: 0-1)
+ *   - limit: Number of recommendations (default: 10, max: 50)
+ *   - excludePurchased: Exclude purchased products (default: true)
+ *   - excludeViewed: Exclude viewed products (default: false)
+ * Example:
+ *   GET /recommendations/1/content-based-v2?minScore=0.4&limit=15
+ */
+router.get("/:userId/content-based-v2", requireAuth, requireSelfFromParam("userId"), getContentBasedRecs2);
+
+/**
+ * GET /recommendations/:userId/analyze/:productId
+ * Analyze why a product is recommended to a user
+ * Shows similarity scores and contributing factors
+ */
+router.get("/:userId/analyze/:productId", requireAuth, requireSelfFromParam("userId"), analyzeRecommendation);
 
 /**
  * GET /recommendations/:userId/collaborative
