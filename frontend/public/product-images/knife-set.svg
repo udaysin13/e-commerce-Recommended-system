@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">Kitchen knife set</title>
+  <desc id="desc">A clean product illustration of a stainless steel kitchen knife set.</desc>
+  <rect width="800" height="520" fill="#fff7ed"/>
+  <rect x="100" y="80" width="600" height="360" rx="42" fill="#9a3412"/>
+  <path d="M250 160h50v240h-50zM368 145h50v255h-50zM486 180h50v220h-50z" fill="#7c2d12"/>
+  <path d="M248 152c68 20 98 74 52 154h-52zM366 138c70 24 102 82 52 170h-52zM484 172c62 18 90 70 52 136h-52z" fill="#f8fafc"/>
+  <path d="M250 316h50v84h-50zM368 318h50v82h-50zM486 318h50v82h-50z" fill="#111827"/>
+</svg>

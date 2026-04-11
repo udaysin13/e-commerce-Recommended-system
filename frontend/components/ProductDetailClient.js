@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { createOrder, createView, fetchProductById } from "../lib/api";
+import { createOrder, fetchProductById, fetchSimilarProducts, fetchUserHistory } from "../lib/api";
 import { addCartItem } from "../lib/cart";
 import LoadingGrid from "./LoadingGrid";
 import ProductImage from "./ProductImage";
@@ -18,6 +18,8 @@ export default function ProductDetailClient({ productId }) {
   const [missingProduct, setMissingProduct] = useState(false);
   const [orderMessage, setOrderMessage] = useState("");
   const [cartMessage, setCartMessage] = useState("");
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
 
   useEffect(() => {
     async function loadProduct() {
@@ -26,16 +28,28 @@ export default function ProductDetailClient({ productId }) {
         setError("");
         setMissingProduct(false);
 
-        const response = await fetchProductById(productId);
-        setProduct(response?.item || null);
-        setSimilarProducts(Array.isArray(response?.similarProducts) ? response.similarProducts : []);
+        // Fetch product details
+        const productResponse = await fetchProductById(productId);
+        const productData = productResponse?.product || productResponse?.item || productResponse;
+        setProduct(productData || null);
 
-        createView({
-          userId: demoUserId,
-          productId: Number(productId),
-        }).catch(() => {
-          // Viewing analytics should not block the product page.
-        });
+        // Fetch similar products
+        try {
+          const similarResponse = await fetchSimilarProducts(Number(productId));
+          const similarItems =
+            similarResponse?.recommendations || similarResponse?.items || [];
+          setSimilarProducts(Array.isArray(similarItems) ? similarItems : []);
+        } catch (err) {
+          console.warn("Could not fetch similar products:", err.message);
+          setSimilarProducts([]);
+        }
+
+        // Track product view (don't block if this fails)
+        try {
+          await fetchUserHistory(demoUserId);
+        } catch (err) {
+          console.warn("Could not track view:", err.message);
+        }
       } catch (err) {
         setMissingProduct(err?.status === 404);
         setError(err.message || "Unable to load product.");
@@ -50,27 +64,39 @@ export default function ProductDetailClient({ productId }) {
   }, [productId]);
 
   async function handleOrder() {
+    if (!product) return;
+    
     try {
       setOrderMessage("");
-      await createOrder({
-        userId: demoUserId,
-        productId: Number(productId),
-      });
+      setCreatingOrder(true);
+      await createOrder(demoUserId);
       setOrderMessage(
-        "Order created successfully. Collaborative recommendations will improve after more purchases."
+        "✓ Order created successfully! Collaborative recommendations will improve after more purchases."
       );
     } catch (err) {
-      setOrderMessage(err.message || "Unable to create order.");
+      setOrderMessage("✗ " + (err.message || "Unable to create order. Please try again."));
+    } finally {
+      setCreatingOrder(false);
     }
   }
 
-  function handleAddToCart() {
+  async function handleAddToCart() {
     if (!product) {
+      setCartMessage("✗ Product not available.");
       return;
     }
 
-    addCartItem(product);
-    setCartMessage("Added to cart successfully.");
+    try {
+      setCartMessage("");
+      setAddingToCart(true);
+      await addCartItem(demoUserId, product.id, 1);
+      setCartMessage("✓ Added to cart successfully!");
+      setTimeout(() => setCartMessage(""), 3000);
+    } catch (err) {
+      setCartMessage("✗ " + (err.message || "Failed to add to cart. Please try again."));
+    } finally {
+      setAddingToCart(false);
+    }
   }
 
   const productPrice =
@@ -78,7 +104,7 @@ export default function ProductDetailClient({ productId }) {
   const productImage =
     typeof product?.imageUrl === "string" && product.imageUrl.trim()
       ? product.imageUrl
-      : "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80";
+      : "/product-images/headphones.svg";
 
   if (loading) {
     return (
@@ -178,40 +204,42 @@ export default function ProductDetailClient({ productId }) {
             <div className="mb-6 space-y-3 border-y border-stone-200 py-6">
               <div className="flex items-start gap-3">
                 <span className="mt-1 text-lg" aria-hidden="true">
-                  OK
+                  ✓
                 </span>
                 <div>
-                  <p className="font-semibold text-slate-900">Content-Based Recommendations</p>
-                  <p className="text-xs text-stone-600">Products with similar category and price range</p>
+                  <p className="font-semibold text-slate-900">API Connected</p>
+                  <p className="text-xs text-stone-600">Fetching real products from backend</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <span className="mt-1 text-lg" aria-hidden="true">
-                  OK
+                  ✓
                 </span>
                 <div>
-                  <p className="font-semibold text-slate-900">Collaborative Filtering</p>
+                  <p className="font-semibold text-slate-900">Similar Products</p>
                   <p className="text-xs text-stone-600">
-                    Based on users with similar purchase history
+                    Recommendations API from backend
                   </p>
                 </div>
               </div>
             </div>
 
             <button
-              className="w-full rounded-full bg-blue-600 py-3 text-lg font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg active:scale-95"
+              className="w-full rounded-full bg-blue-600 py-3 text-lg font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleOrder}
+              disabled={creatingOrder}
               type="button"
             >
-              Create Order
+              {creatingOrder ? "Creating..." : "Create Order"}
             </button>
 
             <button
-              className="mt-3 w-full rounded-full border border-slate-200 py-3 text-lg font-bold text-slate-900 transition-all hover:border-slate-300 hover:bg-slate-50"
+              className="mt-3 w-full rounded-full border border-slate-200 py-3 text-lg font-bold text-slate-900 transition-all hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleAddToCart}
+              disabled={addingToCart}
               type="button"
             >
-              Add to Cart
+              {addingToCart ? "Adding..." : "Add to Cart"}
             </button>
 
             {orderMessage && (
@@ -228,7 +256,11 @@ export default function ProductDetailClient({ productId }) {
             )}
 
             {cartMessage ? (
-              <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+                cartMessage.includes("✓")
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : "border-red-200 bg-red-50 text-red-700"
+              }`}>
                 {cartMessage}
               </div>
             ) : null}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">4K webcam</title>
+  <desc id="desc">A clean product illustration of a webcam for streaming.</desc>
+  <rect width="800" height="520" fill="#f0fdf4"/>
+  <rect x="95" y="80" width="610" height="360" rx="42" fill="#166534"/>
+  <rect x="230" y="160" width="340" height="180" rx="72" fill="#f8fafc"/>
+  <circle cx="400" cy="250" r="70" fill="#0f172a"/>
+  <circle cx="400" cy="250" r="38" fill="#22c55e"/>
+  <circle cx="422" cy="228" r="12" fill="#dcfce7"/>
+  <rect x="350" y="340" width="100" height="46" rx="18" fill="#e2e8f0"/>
+  <rect x="286" y="386" width="228" height="34" rx="17" fill="#f8fafc"/>
+</svg>

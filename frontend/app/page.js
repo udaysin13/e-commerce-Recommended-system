@@ -1,5 +1,10 @@
-import HomeClient from "../components/HomeClient";
+import { Suspense } from "react";
+import HomeClientEnhanced from "../components/HomeClientEnhanced";
 
 export default function HomePage() {
-  return <HomeClient />;
+  return (
+    <Suspense fallback={null}>
+      <HomeClientEnhanced />
+    </Suspense>
+  );
 }

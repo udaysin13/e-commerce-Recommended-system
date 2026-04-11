@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">Face serum</title>
+  <desc id="desc">A clean product illustration of a natural face serum bottle.</desc>
+  <rect width="800" height="520" fill="#fff1f2"/>
+  <rect x="95" y="75" width="610" height="370" rx="44" fill="#be123c"/>
+  <rect x="352" y="118" width="96" height="56" rx="14" fill="#fecdd3"/>
+  <rect x="330" y="170" width="140" height="230" rx="34" fill="#f8fafc"/>
+  <rect x="354" y="218" width="92" height="86" rx="22" fill="#fecdd3"/>
+  <path d="M400 238c28 34 40 56 40 78 0 26-18 46-40 46s-40-20-40-46c0-22 12-44 40-78z" fill="#fb7185"/>
+</svg>

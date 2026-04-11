@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">Book</title>
+  <desc id="desc">A clean product illustration of a bestselling book.</desc>
+  <rect width="800" height="520" fill="#faf5ff"/>
+  <rect x="95" y="75" width="610" height="370" rx="44" fill="#7e22ce"/>
+  <path d="M300 130h230v286H300c-36 0-54-20-54-50V180c0-30 18-50 54-50z" fill="#f8fafc"/>
+  <path d="M300 130c-36 0-54 20-54 50v186c0 30 18 50 54 50" fill="none" stroke="#c084fc" stroke-width="22"/>
+  <path d="M330 214h140M330 260h120M330 306h100" stroke="#581c87" stroke-width="18" stroke-linecap="round"/>
+</svg>

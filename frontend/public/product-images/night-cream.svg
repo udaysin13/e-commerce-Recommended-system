@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">Night cream</title>
+  <desc id="desc">A clean product illustration of a moisturizing night cream jar.</desc>
+  <rect width="800" height="520" fill="#f8fafc"/>
+  <rect x="95" y="75" width="610" height="370" rx="44" fill="#0f172a"/>
+  <ellipse cx="400" cy="230" rx="152" ry="62" fill="#e0f2fe"/>
+  <rect x="248" y="230" width="304" height="130" rx="48" fill="#f8fafc"/>
+  <ellipse cx="400" cy="360" rx="152" ry="62" fill="#c7d2fe"/>
+  <path d="M456 172c-44 28-62 74-44 112 32-22 54-58 44-112z" fill="#a7f3d0"/>
+  <circle cx="358" cy="286" r="14" fill="#6366f1"/>
+</svg>

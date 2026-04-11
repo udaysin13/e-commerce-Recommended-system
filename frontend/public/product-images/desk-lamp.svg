@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">LED desk lamp</title>
+  <desc id="desc">A clean product illustration of a modern LED desk lamp.</desc>
+  <rect width="800" height="520" fill="#f5f3ff"/>
+  <rect x="95" y="75" width="610" height="370" rx="44" fill="#6d28d9"/>
+  <path d="M320 360l80-150 86 150" fill="none" stroke="#f8fafc" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M360 190h150l-32 64H330z" fill="#f8fafc"/>
+  <path d="M292 400h216" stroke="#f8fafc" stroke-width="30" stroke-linecap="round"/>
+  <path d="M338 272l-36 52M498 272l36 52" stroke="#facc15" stroke-width="16" stroke-linecap="round"/>
+</svg>

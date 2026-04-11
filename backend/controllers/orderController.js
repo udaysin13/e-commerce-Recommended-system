@@ -1,33 +1,22 @@
-const dataStore = require("../lib/dataStore");
+const orderService = require("../services/orderService");
+const asyncHandler = require("../middleware/asyncHandler");
 
-async function createOrder(req, res, next) {
-  try {
-    const userId = Number(req.body.userId);
-    const productId = Number(req.body.productId);
+const createOrder = asyncHandler(async (req, res) => {
+  const userId = Number(req.body.userId);
 
-    if (!userId || !productId) {
-      return res.status(400).json({ error: "userId and productId are required." });
-    }
-
-    const [user, product] = await Promise.all([
-      dataStore.getUserById(userId),
-      dataStore.getProductById(productId),
-    ]);
-
-    if (!user || !product) {
-      return res.status(404).json({ error: "User or product not found." });
-    }
-
-    const order = await dataStore.createOrder({ userId, productId });
-
-    return res.status(201).json({
-      message: "Order created successfully",
-      order,
-    });
-  } catch (error) {
-    next(error);
+  if (!userId || userId <= 0) {
+    return res.status(400).json({ error: "Valid userId is required." });
   }
-}
+
+  const order = await orderService.createOrder(userId, {
+    status: req.body.status,
+  });
+
+  return res.status(201).json({
+    message: "Order created successfully",
+    order,
+  });
+});
 
 module.exports = {
   createOrder,

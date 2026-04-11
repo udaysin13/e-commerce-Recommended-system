@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">Wool jacket</title>
+  <desc id="desc">A clean product illustration of a winter wool jacket.</desc>
+  <rect width="800" height="520" fill="#f7fee7"/>
+  <rect x="88" y="75" width="624" height="370" rx="46" fill="#3f6212"/>
+  <path d="M318 126h164l82 92-54 62-30-30v174H320V250l-30 30-54-62z" fill="#e5e7eb"/>
+  <path d="M400 154v270" stroke="#475569" stroke-width="18" stroke-linecap="round"/>
+  <path d="M356 134c10 38 78 38 88 0" fill="none" stroke="#475569" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="426" cy="238" r="10" fill="#475569"/>
+  <circle cx="426" cy="302" r="10" fill="#475569"/>
+</svg>

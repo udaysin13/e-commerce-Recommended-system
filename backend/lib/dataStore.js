@@ -20,9 +20,12 @@ function isDatabaseConnectivityError(error) {
   const message = String(error.message || "").toLowerCase();
   return (
     error.code === "P1001" ||
+    error.code === "P2021" ||
+    error.code === "P2022" ||
     message.includes("connect") ||
     message.includes("connection") ||
-    message.includes("econnrefused")
+    message.includes("econnrefused") ||
+    message.includes("does not exist")
   );
 }
 
@@ -165,7 +168,21 @@ async function createUser({ email, password }) {
 
 async function createOrder({ userId, productId }) {
   return withFallback(
-    () => prisma.order.create({ data: { userId, productId } }),
+    () =>
+      prisma.order.create({
+        data: {
+          userId,
+          total: 0,
+          items: {
+            create: {
+              productId,
+              userId,
+              quantity: 1,
+              price: 0,
+            },
+          },
+        },
+      }),
     () => {
       const order = { id: state.orders.length + 1, userId, productId };
       state.orders.push(order);
@@ -240,7 +257,7 @@ async function getHybridRecommendations(userId) {
         take: 5,
       });
 
-      const userOrders = await prisma.order.findMany({
+      const userOrders = await prisma.orderItem.findMany({
         where: { userId },
         select: { productId: true },
       });
@@ -264,7 +281,7 @@ async function getHybridRecommendations(userId) {
       const collaborative = [];
       if (userOrders.length) {
         const orderedProductIds = userOrders.map((order) => order.productId);
-        const similarUsersOrders = await prisma.order.findMany({
+        const similarUsersOrders = await prisma.orderItem.findMany({
           where: {
             productId: { in: orderedProductIds },
             userId: { not: userId },
@@ -274,7 +291,7 @@ async function getHybridRecommendations(userId) {
         const similarUserIds = [...new Set(similarUsersOrders.map((item) => item.userId))];
 
         if (similarUserIds.length) {
-          const recommendedOrders = await prisma.order.findMany({
+          const recommendedOrders = await prisma.orderItem.findMany({
             where: {
               userId: { in: similarUserIds },
               productId: { notIn: orderedProductIds },

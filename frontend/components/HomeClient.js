@@ -47,7 +47,11 @@ export default function HomeClient() {
             : 1
         );
         setRecommendations(
-          Array.isArray(recommendationResponse.items) ? recommendationResponse.items : []
+          Array.isArray(recommendationResponse.recommendations)
+            ? recommendationResponse.recommendations
+            : Array.isArray(recommendationResponse.items)
+              ? recommendationResponse.items
+              : []
         );
       } catch (err) {
         setError(err.message || "Unable to load products.");

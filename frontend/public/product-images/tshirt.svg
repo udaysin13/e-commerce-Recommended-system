@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">Cotton t-shirt</title>
+  <desc id="desc">A clean product illustration of a premium cotton t-shirt.</desc>
+  <rect width="800" height="520" fill="#fdf2f8"/>
+  <rect x="90" y="80" width="620" height="360" rx="44" fill="#9d174d"/>
+  <path d="M300 150h200l92 78-64 76-48-42v148H320V262l-48 42-64-76z" fill="#f8fafc"/>
+  <path d="M346 150c10 36 98 36 108 0" fill="none" stroke="#9d174d" stroke-width="22" stroke-linecap="round"/>
+  <path d="M320 410h160" stroke="#e5e7eb" stroke-width="18" stroke-linecap="round"/>
+</svg>

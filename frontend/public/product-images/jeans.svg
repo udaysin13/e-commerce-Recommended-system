@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">Denim jeans</title>
+  <desc id="desc">A clean product illustration of casual denim jeans.</desc>
+  <rect width="800" height="520" fill="#eef2ff"/>
+  <rect x="95" y="70" width="610" height="380" rx="44" fill="#3730a3"/>
+  <path d="M310 130h180l28 310h-92l-26-195-26 195h-92z" fill="#60a5fa"/>
+  <path d="M310 130h180v58H310z" fill="#1d4ed8"/>
+  <path d="M400 188v56" stroke="#bfdbfe" stroke-width="14" stroke-linecap="round"/>
+  <path d="M330 158h40M430 158h40" stroke="#bfdbfe" stroke-width="12" stroke-linecap="round"/>
+</svg>

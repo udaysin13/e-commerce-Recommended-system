@@ -4,6 +4,9 @@ const users = [
   { id: 3, email: "cara@example.com", password: "cara123" },
 ];
 
+const realProductImage = (fileName) =>
+  `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=900`;
+
 const products = [
   {
     id: 1,
@@ -12,7 +15,7 @@ const products = [
     category: "Electronics",
     price: 79999,
     imageUrl:
-      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80",
+      realProductImage("Mobile phone.jpg"),
   },
   {
     id: 2,
@@ -21,7 +24,7 @@ const products = [
     category: "Electronics",
     price: 74999,
     imageUrl:
-      "https://images.unsplash.com/photo-1512499617640-c2f99981b6b5?auto=format&fit=crop&w=800&q=80",
+      realProductImage("Android smartphones.jpg"),
   },
   {
     id: 3,
@@ -30,7 +33,7 @@ const products = [
     category: "Electronics",
     price: 24999,
     imageUrl:
-      "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=800&q=80",
+      realProductImage("Bose QuietComfort 35 II Wireless Headphones.jpg"),
   },
   {
     id: 4,
@@ -39,7 +42,7 @@ const products = [
     category: "Fashion",
     price: 6999,
     imageUrl:
-      "https://images.unsplash.com/photo-1562158070-7013134d5d41?auto=format&fit=crop&w=800&q=80",
+      realProductImage("Sneaker.jpg"),
   },
   {
     id: 5,
@@ -48,7 +51,7 @@ const products = [
     category: "Fashion",
     price: 4999,
     imageUrl:
-      "https://images.unsplash.com/photo-1542272604-787c62d465d1?auto=format&fit=crop&w=800&q=80",
+      realProductImage("Denimjeans.JPG"),
   },
   {
     id: 6,
@@ -57,7 +60,7 @@ const products = [
     category: "Home",
     price: 8999,
     imageUrl:
-      "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?auto=format&fit=crop&w=800&q=80",
+      realProductImage("Air Fryer 5458.jpg"),
   },
   {
     id: 7,
@@ -66,7 +69,7 @@ const products = [
     category: "Books",
     price: 699,
     imageUrl:
-      "https://images.unsplash.com/photo-1544716278-ca5e3af4abd8?auto=format&fit=crop&w=800&q=80",
+      realProductImage("Atomic habits.jpg"),
   },
   {
     id: 8,
@@ -75,7 +78,7 @@ const products = [
     category: "Sports",
     price: 1499,
     imageUrl:
-      "https://images.unsplash.com/photo-1589080876629-53c1f4de5e9f?auto=format&fit=crop&w=800&q=80",
+      realProductImage("Yoga mat.jpg"),
   },
   {
     id: 9,
@@ -84,7 +87,15 @@ const products = [
     category: "Beauty",
     price: 1299,
     imageUrl:
-      "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=800&q=80",
+      realProductImage("SansZit moisturizing anti-acne cream.jpg"),
+  },
+  {
+    id: 10,
+    name: "Mixer Grinder",
+    description: "Compact mixer grinder for everyday kitchen prep and smoothies.",
+    category: "Appliances",
+    price: 3499,
+    imageUrl: realProductImage("Mixer grinder.jpg"),
   },
 ];
 

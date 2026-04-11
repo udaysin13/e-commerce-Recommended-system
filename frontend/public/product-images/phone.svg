@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" role="img" aria-labelledby="title desc">
+  <title id="title">Smartphone</title>
+  <desc id="desc">A clean product illustration of a modern smartphone.</desc>
+  <rect width="800" height="520" fill="#ecfccb"/>
+  <rect x="95" y="75" width="610" height="370" rx="44" fill="#365314"/>
+  <rect x="325" y="110" width="150" height="300" rx="34" fill="#f8fafc"/>
+  <rect x="342" y="142" width="116" height="220" rx="20" fill="#84cc16"/>
+  <circle cx="400" cy="385" r="10" fill="#334155"/>
+  <circle cx="376" cy="174" r="16" fill="#f8fafc"/>
+  <circle cx="422" cy="174" r="16" fill="#f8fafc"/>
+</svg>

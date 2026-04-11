@@ -1,4 +1,5 @@
 import "./globals.css";
+import { Suspense } from "react";
 import Navbar from "../components/Navbar";
 
 export const metadata = {
@@ -8,9 +9,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className="bg-gradient-to-br from-slate-50 via-white to-blue-50">
-        <Navbar />
+    <html lang="en" data-scroll-behavior="smooth">
+      <body className="bg-slate-100">
+        <Suspense fallback={null}>
+          <Navbar />
+        </Suspense>
         <div className="min-h-screen">{children}</div>
         <footer className="border-t border-stone-200 bg-white/50 py-8 text-center text-sm text-stone-600">
           <p>Build shopping discovery around real hybrid recommendations.</p>
