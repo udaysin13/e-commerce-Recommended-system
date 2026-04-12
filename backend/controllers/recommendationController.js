@@ -276,67 +276,126 @@ const getOverviewRecs = asyncHandler(async (req, res) => {
 
 /**
  * GET /recommendations/:userId
- * Primary endpoint - returns hybrid recommendations
+ * Primary endpoint - returns recommendations with standard response format
+ * 
+ * Query Parameters:
+ * - limit: Number of recommendations (default: 12, max: 50)
+ * - type: Algorithm type (default: hybrid)
+ *   Options: hybrid, content, collaborative, category, popular, trending, recently-viewed
+ * 
+ * Response Format:
+ * {
+ *   success: true,
+ *   data: [...recommendations],
+ *   metadata: {
+ *     userId: 1,
+ *     algorithm: "Hybrid",
+ *     count: 12,
+ *     type: "hybrid",
+ *     limit: 12
+ *   }
+ * }
  */
 const getRecommendations = asyncHandler(async (req, res) => {
-  const userId = Number(req.params.userId);
-  const limit = Number(req.query.limit) || 12;
-  const type = req.query.type || "hybrid"; // hybrid, content, collaborative, category
+  // Validate userId parameter
+  const userId = req.params.userId ? Number(req.params.userId) : null;
 
-  if (!userId || userId <= 0) {
-    return res.status(400).json({ error: "Valid userId is required" });
+  if (!userId || !Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid userId. Must be a positive integer.",
+      code: "INVALID_USER_ID",
+    });
+  }
+
+  // Parse query parameters with validation
+  const limit = Math.min(Math.max(1, Number(req.query.limit) || 12), 50);
+  const type = (req.query.type || "hybrid").toLowerCase().trim();
+
+  // Supported recommendation types
+  const supportedTypes = [
+    "hybrid",
+    "content",
+    "content-based",
+    "collaborative",
+    "category",
+    "popular",
+    "trending",
+    "recent",
+    "recently-viewed",
+  ];
+
+  if (!supportedTypes.includes(type)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid recommendation type: "${type}"`,
+      supportedTypes: supportedTypes,
+      code: "INVALID_TYPE",
+    });
   }
 
   let items = [];
   let algorithm = "";
 
-  switch (type.toLowerCase()) {
-    case "content":
-    case "content-based":
-      items = await getContentBasedRecommendations(userId, limit);
-      algorithm = "Content-Based Filtering";
-      break;
+  // Route to appropriate recommendation algorithm
+  try {
+    switch (type) {
+      case "content":
+      case "content-based":
+        items = await getContentBasedRecommendations(userId, limit);
+        algorithm = "Content-Based Filtering";
+        break;
 
-    case "collaborative":
-      items = await getCollaborativeRecommendations(userId, limit);
-      algorithm = "Collaborative Filtering";
-      break;
+      case "collaborative":
+        items = await getCollaborativeRecommendations(userId, limit);
+        algorithm = "Collaborative Filtering";
+        break;
 
-    case "category":
-      items = await getCategoryBasedRecommendations(userId, limit);
-      algorithm = "Category-Based Filtering";
-      break;
+      case "category":
+        items = await getCategoryBasedRecommendations(userId, limit);
+        algorithm = "Category-Based Filtering";
+        break;
 
-    case "popular":
-      items = await getPopularProducts(limit);
-      algorithm = "Popularity";
-      break;
+      case "popular":
+        items = await getPopularProducts(limit);
+        algorithm = "Popularity";
+        break;
 
-    case "trending":
-      items = await getTrendingProducts(limit);
-      algorithm = "Trending";
-      break;
+      case "trending":
+        items = await getTrendingProducts(limit);
+        algorithm = "Trending";
+        break;
 
-    case "recent":
-    case "recently-viewed":
-      items = await getRecentlyViewedProducts(userId, limit);
-      algorithm = "Recently Viewed";
-      break;
+      case "recent":
+      case "recently-viewed":
+        items = await getRecentlyViewedProducts(userId, limit);
+        algorithm = "Recently Viewed";
+        break;
 
-    default:
-      items = await getHybridRecommendations(userId, limit);
-      algorithm = "Hybrid (Combined)";
+      default:
+        items = await getHybridRecommendations(userId, limit);
+        algorithm = "Hybrid (Combined)";
+    }
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch recommendations",
+      message: err.message,
+      code: "FETCH_ERROR",
+    });
   }
 
-  return res.json({
-    recommendations: items,
-    algorithm,
-    userId,
-    type,
-    count: items.length,
-    queryParameters: {
+  // Return standardized response format
+  return res.status(200).json({
+    success: true,
+    data: items || [],
+    metadata: {
+      userId,
+      algorithm,
+      type,
       limit,
-      type: "Supported: hybrid, content, collaborative, category, popular, trending, recently-viewed",
+      count: items ? items.length : 0,
+      timestamp: new Date().toISOString(),
     },
   });
 });

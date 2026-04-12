@@ -591,6 +591,53 @@ async function getHybridRecommendations(userId, limit = 12) {
   }
 }
 
+/**
+ * Get products similar to a given product
+ * Based on category and price range
+ */
+async function getSimilarProducts(productId, limit = 8) {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) return [];
+
+    const minPrice = Math.max(0, product.price * 0.75);
+    const maxPrice = product.price * 1.25;
+
+    const [sameCategory, nearbyPrice] = await Promise.all([
+      prisma.product.findMany({
+        where: {
+          id: { not: productId },
+          category: product.category,
+        },
+        orderBy: [{ rating: "desc" }, { reviews: "desc" }, { id: "asc" }],
+        take: limit,
+      }),
+      prisma.product.findMany({
+        where: {
+          id: { not: productId },
+          category: { not: product.category },
+          price: { gte: minPrice, lte: maxPrice },
+        },
+        orderBy: [{ rating: "desc" }, { reviews: "desc" }, { id: "asc" }],
+        take: limit,
+      }),
+    ]);
+
+    return uniqueByProductId([...sameCategory, ...nearbyPrice])
+      .slice(0, limit)
+      .map((item) => ({
+        ...item,
+        similaritySource: item.category === product.category ? "category" : "price",
+      }));
+  } catch (error) {
+    console.warn("Get similar products failed:", error.message);
+    return [];
+  }
+}
+
 module.exports = {
   // Main recommendations
   getHybridRecommendations,

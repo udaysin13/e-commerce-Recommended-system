@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import HomeClientEnhanced from "../components/HomeClientEnhanced";
+import HomePageEnhanced from "../components/HomePageEnhanced";
 
 export default function HomePage() {
   return (
-    <Suspense fallback={null}>
-      <HomeClientEnhanced />
+    <Suspense fallback={<div className="h-screen bg-gray-100" />}>
+      <HomePageEnhanced />
     </Suspense>
   );
 }
