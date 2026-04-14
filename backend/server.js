@@ -12,6 +12,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const authRoutes = require("./routes/authRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
 const advancedRecommendationRoutes = require("./routes/advancedRecommendationRoutes");
+const enhancedRecommendationRoutes = require("./routes/enhancedRecommendationRoutes");
 const viewRoutes = require("./routes/viewRoutes");
 
 const app = express();
@@ -43,12 +44,14 @@ app.get("/", (_req, res) => {
     environment: process.env.NODE_ENV || "development",
     port: PORT,
     endpoints: {
-      users: "/users",
-      products: "/products",
-      cart: "/cart",
-      orders: "/orders",
-      recommendations: "/recommendations",
-      auth: "/auth",
+      users: "/api/users",
+      products: "/api/products",
+      cart: "/api/cart",
+      orders: "/api/orders",
+      recommendations: "/api/recommendations",
+      enhanced_recommendations: "/api/enhanced-recommendations",
+      advanced_recommendations: "/api/advanced-recommendations",
+      auth: "/api/auth",
     },
   });
 });
@@ -57,29 +60,37 @@ app.get("/", (_req, res) => {
 // API ROUTES
 // ============================================
 
+const apiRouter = express.Router();
+
 // User management
-app.use("/users", userRoutes);
+apiRouter.use("/users", userRoutes);
 
 // Products
-app.use("/products", productRoutes);
+apiRouter.use("/products", productRoutes);
 
 // Shopping cart
-app.use("/cart", cartRoutes);
+apiRouter.use("/cart", cartRoutes);
 
 // Orders
-app.use("/orders", orderRoutes);
+apiRouter.use("/orders", orderRoutes);
 
 // Authentication
-app.use("/auth", authRoutes);
+apiRouter.use("/auth", authRoutes);
 
 // Recommendations
-app.use("/recommendations", recommendationRoutes);
+apiRouter.use("/recommendations", recommendationRoutes);
+
+// Enhanced Recommendations (frontend integration)
+apiRouter.use("/enhanced-recommendations", enhancedRecommendationRoutes);
 
 // Advanced Recommendations (Intermediate-level)
-app.use("/advanced-recommendations", advancedRecommendationRoutes);
+apiRouter.use("/advanced-recommendations", advancedRecommendationRoutes);
 
 // View tracking
-app.use("/view", viewRoutes);
+apiRouter.use("/view", viewRoutes);
+
+// Mount all API routes under /api
+app.use("/api", apiRouter);
 
 // ============================================
 // ERROR HANDLING

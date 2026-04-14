@@ -35,7 +35,7 @@ const getRecommendations = asyncHandler(async (req, res) => {
   const excludePurchased = req.query.excludePurchased !== "false";
   const excludeViewed = req.query.excludeViewed === "true";
 
-  logger.debug("Fetching content-based recommendations", {
+  console.log("Fetching content-based recommendations", {
     userId,
     minScore,
     limit,
@@ -76,7 +76,7 @@ const analyzeRecommendation = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid user or product ID" });
   }
 
-  logger.debug("Analyzing product recommendation", { userId, productId });
+  console.log("Analyzing product recommendation", { userId, productId });
 
   const analysis = await analyzeProductSimilarity(userId, productId);
 
@@ -104,7 +104,7 @@ const getSimilar = asyncHandler(async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 10, 50);
   const excludeOriginal = req.query.excludeOriginal !== "false";
 
-  logger.debug("Finding similar products", {
+  console.log("Finding similar products", {
     productId,
     limit,
     excludeOriginal,

@@ -29,7 +29,7 @@ const getRecommendations = asyncHandler(async (req, res) => {
   const minSimilarity = Math.max(0, Math.min(1, parseFloat(req.query.minSimilarity) || 0.3));
   const limit = Math.min(parseInt(req.query.limit) || 10, 50);
 
-  logger.debug("Fetching collaborative recommendations", {
+  console.log("Fetching collaborative recommendations", {
     userId,
     topK,
     minSimilarity,
@@ -66,7 +66,7 @@ const analyzeSimilarity = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid user ID" });
   }
 
-  logger.debug("Analyzing user similarity", { userId });
+  console.log("Analyzing user similarity", { userId });
 
   const analysis = await analyzeUserSimilarity(userId);
 

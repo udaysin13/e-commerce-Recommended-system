@@ -2,7 +2,8 @@
   "name": "ecommerce-recommendation-system",
   "private": true,
   "scripts": {
-    "dev": "start \"backend\" cmd /k \"cd /d backend && npm run dev\" && npm --prefix frontend run dev",
+    "dev": "npm --prefix frontend run dev",
+    "dev:all": "start \"backend\" cmd /k \"cd /d backend && npm run dev\" && npm --prefix frontend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run dev"
   }

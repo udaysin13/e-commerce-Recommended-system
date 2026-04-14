@@ -14,4 +14,4 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 
-export default app; // ✅ THIS LINE IS REQUIRED
+export default app;

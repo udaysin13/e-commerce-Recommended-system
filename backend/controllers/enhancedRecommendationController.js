@@ -19,7 +19,7 @@ const {
   mergeAndBlendScores,
   generateExplanation,
   calculatePopularityScore,
-} = require("./scoringService");
+} = require("../services/scoringService");
 
 /**
  * GET /api/enhanced-recommendations/:userId
@@ -35,16 +35,18 @@ const getEnhancedRecommendations = asyncHandler(async (req, res) => {
   const startTime = Date.now();
 
   // 1. VALIDATE INPUT
-  const { userId, error: userError } = validateUserId(req.params.userId);
+  const validation = validateUserId(req.params.userId);
 
-  if (userError) {
-    logger.warn("Invalid userId", { userId: req.params.userId });
+  if (!validation.valid || !validation.userId) {
+    console.warn("Invalid userId", { userId: req.params.userId });
     return res.status(400).json({
       success: false,
-      error: userError,
+      error: validation.error || "Invalid user ID",
       code: "INVALID_USER_ID",
     });
   }
+
+  const userId = validation.userId;
 
   // 2. PARSE PARAMETERS
   const algorithm = (req.query.algorithm || "hybrid").toLowerCase();
@@ -69,7 +71,7 @@ const getEnhancedRecommendations = asyncHandler(async (req, res) => {
     });
   }
 
-  logger.debug("Enhanced recommendations requested", {
+  console.log("Enhanced recommendations requested", {
     userId,
     algorithm,
     limit,
@@ -107,12 +109,12 @@ const getEnhancedRecommendations = asyncHandler(async (req, res) => {
 
     // 6. TRACKING (Background - non-blocking)
     trackRecommendationImpression(userId, algorithm, recommendations).catch(
-      logger.error
+      (err) => console.error("Tracking error:", err)
     );
 
     const executionTime = Date.now() - startTime;
 
-    logger.info("Enhanced recommendations fetched", {
+    console.log("Enhanced recommendations fetched", {
       userId,
       algorithm,
       count: recommendations.length,
@@ -134,7 +136,7 @@ const getEnhancedRecommendations = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("Error fetching enhanced recommendations", {
+    console.error("Error fetching enhanced recommendations", {
       userId,
       algorithm,
       error: error.message,
@@ -208,7 +210,7 @@ async function getHybridRecommendations(
 
     return blended.slice(0, limit);
   } catch (error) {
-    logger.error("Hybrid algorithm error", {
+    console.error("Hybrid algorithm error", {
       userId,
       error: error.message,
     });
@@ -233,7 +235,7 @@ async function getCollaborativeRecommendations(userId, limit) {
       algorithmExplain: "Based on users with similar purchase history",
     }));
   } catch (error) {
-    logger.error("Collaborative algorithm error", {
+    console.error("Collaborative algorithm error", {
       userId,
       error: error.message,
     });
@@ -258,7 +260,7 @@ async function getContentRecommendations(userId, limit) {
         "Based on categories and products you've interacted with",
     }));
   } catch (error) {
-    logger.error("Content algorithm error", {
+    console.error("Content algorithm error", {
       userId,
       error: error.message,
     });
@@ -275,23 +277,59 @@ async function getTrendingRecommendations(limit) {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get products with recent high-value interactions
-    const trendingInteractions = await prisma.interaction.groupBy({
-      by: ["productId"],
-      where: {
-        createdAt: { gte: sevenDaysAgo },
-      },
-      _sum: {
-        weight: true,
-      },
-      _count: true,
-      orderBy: {
-        _sum: {
-          weight: "desc",
-        },
-      },
-      take: limit * 2,
+    const [recentViews, recentPurchases] = await Promise.all([
+      prisma.viewHistory.groupBy({
+        by: ["productId"],
+        where: { viewedAt: { gte: sevenDaysAgo } },
+        _count: { productId: true },
+      }),
+      prisma.orderItem.groupBy({
+        by: ["productId"],
+        where: { createdAt: { gte: sevenDaysAgo } },
+        _count: { productId: true },
+        _sum: { quantity: true },
+      }),
+    ]);
+
+    const productScores = new Map();
+
+    recentViews.forEach((view) => {
+      productScores.set(view.productId, {
+        productId: view.productId,
+        interactionWeight: view._count.productId,
+        interactionCount: view._count.productId,
+      });
     });
+
+    recentPurchases.forEach((purchase) => {
+      const existing = productScores.get(purchase.productId) || {
+        productId: purchase.productId,
+        interactionWeight: 0,
+        interactionCount: 0,
+      };
+      const purchaseCount = purchase._sum.quantity || purchase._count.productId;
+      existing.interactionWeight += purchaseCount * 5;
+      existing.interactionCount += purchase._count.productId;
+      productScores.set(purchase.productId, existing);
+    });
+
+    const trendingInteractions = Array.from(productScores.values())
+      .sort((a, b) => b.interactionWeight - a.interactionWeight)
+      .slice(0, limit * 2);
+
+    if (trendingInteractions.length === 0) {
+      const fallbackProducts = await prisma.product.findMany({
+        orderBy: [{ rating: "desc" }, { reviews: "desc" }, { createdAt: "desc" }],
+        take: limit,
+      });
+
+      return fallbackProducts.map((product) => ({
+        ...product,
+        interactionWeight: 0,
+        interactionCount: 0,
+        algorithmExplain: "Popular products from the catalog",
+      }));
+    }
 
     const productIds = trendingInteractions.map((t) => t.productId);
 
@@ -304,15 +342,15 @@ async function getTrendingRecommendations(limit) {
       const product = products.find((p) => p.id === trend.productId);
       return {
         ...product,
-        interactionWeight: trend._sum.weight || 0,
-        interactionCount: trend._count,
+        interactionWeight: trend.interactionWeight,
+        interactionCount: trend.interactionCount,
         algorithmExplain: "Trending with users this week",
       };
-    });
+    }).filter((product) => product.id);
 
     return scored.slice(0, limit);
   } catch (error) {
-    logger.error("Trending algorithm error", { error: error.message });
+    console.error("Trending algorithm error", { error: error.message });
     return [];
   }
 }
@@ -324,29 +362,74 @@ async function getTrendingRecommendations(limit) {
 async function getTrendingProductsForUser(userId, limit) {
   try {
     // Get user's product history
-    const userInteractions = await prisma.interaction.findMany({
-      where: { userId },
-      select: { productId: true },
-      distinct: ["productId"],
-    });
+    const [userViews, userPurchases] = await Promise.all([
+      prisma.viewHistory.findMany({
+        where: { userId },
+        select: { productId: true },
+        distinct: ["productId"],
+      }),
+      prisma.orderItem.findMany({
+        where: { userId },
+        select: { productId: true },
+        distinct: ["productId"],
+      }),
+    ]);
 
-    const userProductIds = userInteractions.map((i) => i.productId);
+    const userInteractions = [...userViews, ...userPurchases];
+    const userProductIds = [...new Set(userInteractions.map((i) => i.productId))];
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get trending products (excluding user's interactions)
-    const trending = await prisma.interaction.groupBy({
-      by: ["productId"],
-      where: {
-        createdAt: { gte: sevenDaysAgo },
-        productId: { notIn: userProductIds },
-      },
-      _sum: { weight: true },
-      _count: true,
-      orderBy: { _sum: { weight: "desc" } },
-      take: limit,
+    const [recentViews, recentPurchases] = await Promise.all([
+      prisma.viewHistory.groupBy({
+        by: ["productId"],
+        where: {
+          viewedAt: { gte: sevenDaysAgo },
+          productId: { notIn: userProductIds },
+        },
+        _count: { productId: true },
+      }),
+      prisma.orderItem.groupBy({
+        by: ["productId"],
+        where: {
+          createdAt: { gte: sevenDaysAgo },
+          productId: { notIn: userProductIds },
+        },
+        _count: { productId: true },
+        _sum: { quantity: true },
+      }),
+    ]);
+
+    const productScores = new Map();
+
+    recentViews.forEach((view) => {
+      productScores.set(view.productId, {
+        productId: view.productId,
+        weight: view._count.productId,
+        count: view._count.productId,
+      });
     });
+
+    recentPurchases.forEach((purchase) => {
+      const existing = productScores.get(purchase.productId) || {
+        productId: purchase.productId,
+        weight: 0,
+        count: 0,
+      };
+      const purchaseCount = purchase._sum.quantity || purchase._count.productId;
+      existing.weight += purchaseCount * 5;
+      existing.count += purchase._count.productId;
+      productScores.set(purchase.productId, existing);
+    });
+
+    const trending = Array.from(productScores.values())
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, limit);
+
+    if (trending.length === 0) {
+      return getTrendingRecommendations(limit);
+    }
 
     const productIds = trending.map((t) => t.productId);
     const products = await prisma.product.findMany({
@@ -357,25 +440,54 @@ async function getTrendingProductsForUser(userId, limit) {
     return productIds.map((id) => {
       const product = products.find((p) => p.id === id);
       const trend = trending.find((t) => t.productId === id);
-      const popularity = calculatePopularityScore(
-        product,
-        trend._count || 0
-      );
+      if (!product || !trend) return null;
+      const popularity = calculatePopularityScore(product, trend.count || 0);
 
       return {
         ...product,
-        trendingScore:
-          (trend._sum.weight || 0) * popularity.score,
+        trendingScore: trend.weight * popularity.score,
         isTrending: popularity.isTrending,
       };
-    });
+    }).filter(Boolean);
   } catch (error) {
-    logger.error("Error getting trending products for user", {
+    console.error("Error getting trending products for user", {
       userId,
       error: error.message,
     });
     return [];
   }
+}
+
+async function getUserRecommendationInteractions(userId) {
+  const [views, purchases] = await Promise.all([
+    prisma.viewHistory.findMany({
+      where: { userId },
+      include: { product: true },
+      orderBy: { viewedAt: "desc" },
+      take: 20,
+    }),
+    prisma.orderItem.findMany({
+      where: { userId },
+      include: { product: true },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+  ]);
+
+  return [
+    ...views.map((view) => ({
+      product: view.product,
+      type: "VIEW",
+      weight: 1,
+      date: view.viewedAt,
+    })),
+    ...purchases.map((item) => ({
+      product: item.product,
+      type: "PURCHASE",
+      weight: item.quantity || 1,
+      date: item.createdAt,
+    })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
 /**
@@ -385,14 +497,14 @@ async function getTrendingProductsForUser(userId, limit) {
 async function trackRecommendationImpression(userId, algorithm, recommendations) {
   try {
     // Could log to analytics service, database, etc.
-    logger.debug("Recommendation impression tracked", {
+    console.log("Recommendation impression tracked", {
       userId,
       algorithm,
       productCount: recommendations.length,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    logger.warn("Failed to track recommendation impression", {
+    console.warn("Failed to track recommendation impression", {
       error: error.message,
     });
   }
@@ -404,34 +516,35 @@ async function trackRecommendationImpression(userId, algorithm, recommendations)
  * Get detailed scoring breakdown for debugging/transparency
  */
 const getRecommendationDetails = asyncHandler(async (req, res) => {
-  const { userId, error } = validateUserId(req.params.userId);
+  const validation = validateUserId(req.params.userId);
 
-  if (error) {
+  if (!validation.valid || !validation.userId) {
     return res.status(400).json({
       success: false,
-      error,
+      error: validation.error || "Invalid user ID",
       code: "INVALID_USER_ID",
     });
   }
 
+  const userId = validation.userId;
+
   try {
-    // Get user's recent interactions
-    const interactions = await prisma.interaction.findMany({
-      where: { userId },
-      include: { product: true },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
+    // Get user's recent views and purchases
+    const interactions = await getUserRecommendationInteractions(userId);
 
     // Calculate scores for each
     const scoredInteractions = interactions.map((i) => {
       const {
         calculateInteractionScore,
         calculateRecencyDecay,
-      } = require("./scoringService");
+      } = require("../services/scoringService");
 
-      const baseScore = calculateInteractionScore(i);
-      const recencyFactor = calculateRecencyDecay(i.createdAt);
+      const baseScore = calculateInteractionScore({
+        type: i.type,
+        weight: i.weight,
+        createdAt: i.date,
+      });
+      const recencyFactor = calculateRecencyDecay(i.date);
 
       return {
         product: {
@@ -442,7 +555,7 @@ const getRecommendationDetails = asyncHandler(async (req, res) => {
         interaction: {
           type: i.type,
           weight: i.weight,
-          date: i.createdAt,
+          date: i.date,
         },
         scoring: {
           baseScore,
@@ -474,7 +587,7 @@ const getRecommendationDetails = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("Error fetching recommendation details", {
+    console.error("Error fetching recommendation details", {
       userId,
       error: error.message,
     });

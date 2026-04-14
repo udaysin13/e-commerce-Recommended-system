@@ -55,6 +55,7 @@ export default function HomePageEnhanced() {
                 <Link
                   href="/products"
                   className="inline-block px-8 py-3 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors text-center"
+                  style={{ color: '#2563eb' }}
                 >
                   Shop Now
                 </Link>
@@ -182,6 +183,7 @@ export default function HomePageEnhanced() {
           <Link
             href="/products"
             className="inline-block px-8 py-3 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors"
+            style={{ color: '#2563eb' }}
           >
             Start Shopping
           </Link>

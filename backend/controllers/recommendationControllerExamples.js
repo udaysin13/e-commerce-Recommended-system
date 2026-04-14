@@ -32,7 +32,7 @@ const exampleBasicRecommendations = asyncHandler(async (req, res) => {
   const userId = req.params.userId ? Number(req.params.userId) : null;
   
   if (!userId || !Number.isInteger(userId) || userId <= 0) {
-    logger.warn("Invalid userId provided", { userId, ip: req.ip });
+    console.warn("Invalid userId provided", { userId, ip: req.ip });
     return res.status(400).json({
       success: false,
       error: "Invalid userId. Must be a positive integer.",
@@ -45,7 +45,7 @@ const exampleBasicRecommendations = asyncHandler(async (req, res) => {
   const limit = Math.min(Math.max(1, Number(req.query.limit) || 10), 50);
   const page = Math.max(1, Number(req.query.page) || 1);
 
-  logger.debug("Fetching recommendations", { userId, limit, page });
+  console.log("Fetching recommendations", { userId, limit, page });
 
   try {
     // 3. CALL SERVICE LAYER
@@ -65,7 +65,7 @@ const exampleBasicRecommendations = asyncHandler(async (req, res) => {
 
     const executionTime = Date.now() - startTime;
 
-    logger.info("Recommendations retrieved successfully", {
+    console.log("Recommendations retrieved successfully", {
       userId,
       count: recommendations.length,
       executionTime: `${executionTime}ms`,
@@ -86,7 +86,7 @@ const exampleBasicRecommendations = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     // 5. HANDLE ERRORS PROPERLY
-    logger.error("Error fetching recommendations", {
+    console.error("Error fetching recommendations", {
       userId,
       error: error.message,
       stack: error.stack,
@@ -114,15 +114,17 @@ const exampleBasicRecommendations = asyncHandler(async (req, res) => {
  */
 const exampleAdvancedRecommendations = asyncHandler(async (req, res) => {
   // 1. VALIDATE userId
-  const { userId, error: userError } = validateUserId(req.params.userId);
+  const validation = validateUserId(req.params.userId);
   
-  if (userError) {
+  if (!validation.valid || !validation.userId) {
     return res.status(400).json({
       success: false,
-      error: userError,
+      error: validation.error || "Invalid user ID",
       code: "INVALID_USER_ID",
     });
   }
+
+  const userId = validation.userId;
 
   // 2. PARSE AND VALIDATE QUERY PARAMS
   const type = (req.query.type || "hybrid").toLowerCase().trim();
@@ -139,7 +141,7 @@ const exampleAdvancedRecommendations = asyncHandler(async (req, res) => {
     });
   }
 
-  logger.debug("Advanced recommendations requested", {
+  console.log("Advanced recommendations requested", {
     userId,
     type,
     limit,
@@ -197,7 +199,7 @@ const exampleAdvancedRecommendations = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("Error fetching advanced recommendations", {
+    console.error("Error fetching advanced recommendations", {
       userId,
       type,
       error: error.message,
@@ -261,7 +263,7 @@ const exampleBatchRecommendations = asyncHandler(async (req, res) => {
     });
   }
 
-  logger.debug("Batch recommendations requested", {
+  console.log("Batch recommendations requested", {
     count: validUserIds.length,
   });
 
@@ -290,7 +292,7 @@ const exampleBatchRecommendations = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("Error fetching batch recommendations", {
+    console.error("Error fetching batch recommendations", {
       count: validUserIds.length,
       error: error.message,
     });
@@ -368,7 +370,7 @@ const exampleCachedRecommendations = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("Error fetching cached recommendations", {
+    console.error("Error fetching cached recommendations", {
       userId,
       error: error.message,
     });
@@ -437,7 +439,7 @@ const exampleDebugRecommendations = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("Error fetching debug recommendations", {
+    console.error("Error fetching debug recommendations", {
       userId,
       error: error.message,
     });

@@ -4,7 +4,10 @@
  * Handles all recommendation-related API calls
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+import { getApiBaseUrl, getApiOriginUrl } from './apiConfig';
+
+const API_BASE_URL = getApiBaseUrl();
+const API_ORIGIN_URL = getApiOriginUrl();
 
 /**
  * Fetch recommendations for a user
@@ -108,20 +111,31 @@ export async function getRecommendationsWithFallback(userId, options = {}) {
     'trending',
   ];
 
+  let lastError = null;
   for (const algorithm of algorithms) {
     try {
-      return await getRecommendations(userId, { ...options, algorithm });
+      const response = await getRecommendations(userId, { ...options, algorithm });
+      // Ensure response has proper structure
+      if (response && response.data) {
+        return {
+          success: true,
+          data: response.data || [],
+          metadata: response.metadata || { algorithm, count: (response.data || []).length },
+        };
+      }
+      return response;
     } catch (error) {
-      console.warn(`${algorithm} algorithm failed, trying next...`, error);
+      lastError = error;
+      console.warn(`${algorithm} algorithm failed, trying next...`, error.message);
       // Continue to next algorithm
     }
   }
 
-  // If all fail, return empty result
+  // If all fail, return error result
   return {
     success: false,
     data: [],
-    error: 'All recommendation algorithms failed',
+    error: lastError?.message || 'All recommendation algorithms failed. Please check if the backend is running.',
   };
 }
 
@@ -132,7 +146,7 @@ export async function getRecommendationsWithFallback(userId, options = {}) {
  */
 export async function isRecommendationApiAvailable() {
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await fetch(API_ORIGIN_URL, {
       method: 'GET',
       timeout: 5000,
     });

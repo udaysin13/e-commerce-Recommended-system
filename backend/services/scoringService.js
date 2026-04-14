@@ -95,7 +95,7 @@ function calculateInteractionScore(interaction) {
   const baseWeight = INTERACTION_WEIGHTS[interaction.type] || 1.0;
 
   // Calculate recency decay
-  const recencyFactor = calculateRecencyDecay(interaction.createdAt);
+  const recencyFactor = calculateRecencyDecay(interaction.createdAt || interaction.viewedAt);
 
   // Final score = base weight × recency decay × stored weight
   const score = baseWeight * recencyFactor * (interaction.weight || 1.0);
@@ -174,17 +174,39 @@ async function scoreUserInteractions(userId, options = {}) {
       cutoffDate,
     });
 
-    // Get all recent interactions for user
-    const interactions = await prisma.interaction.findMany({
-      where: {
-        userId,
-        createdAt: { gte: cutoffDate },
-      },
-      include: {
-        product: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    // Build interaction signals from the schema's actual activity tables.
+    const [views, purchases] = await Promise.all([
+      prisma.viewHistory.findMany({
+        where: {
+          userId,
+          viewedAt: { gte: cutoffDate },
+        },
+        include: { product: true },
+        orderBy: { viewedAt: "desc" },
+      }),
+      prisma.orderItem.findMany({
+        where: {
+          userId,
+          createdAt: { gte: cutoffDate },
+        },
+        include: { product: true },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const interactions = [
+      ...views.map((view) => ({
+        ...view,
+        type: "VIEW",
+        weight: 1,
+        createdAt: view.viewedAt,
+      })),
+      ...purchases.map((item) => ({
+        ...item,
+        type: "PURCHASE",
+        weight: item.quantity || 1,
+      })),
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     if (interactions.length === 0) {
       logger.debug("No recent interactions found", { userId });
@@ -276,8 +298,8 @@ async function scoreSimilarUsersProducts(userId, options = {}) {
     logger.debug("Scoring similar users products", { userId, minSimilarity });
 
     // Get this user's purchased products
-    const userPurchases = await prisma.interaction.findMany({
-      where: { userId, type: "PURCHASE" },
+    const userPurchases = await prisma.orderItem.findMany({
+      where: { userId },
       select: { productId: true },
       distinct: ["productId"],
     });
@@ -289,21 +311,20 @@ async function scoreSimilarUsersProducts(userId, options = {}) {
     const userProductIds = userPurchases.map((p) => p.productId);
 
     // Find similar users (purchased same products)
-    const similarUserInteractions = await prisma.interaction.findMany({
+    const similarUserInteractions = await prisma.orderItem.findMany({
       where: {
         productId: { in: userProductIds },
         userId: { not: userId },
-        type: "PURCHASE",
       },
-      select: { userId: true, productId: true, weight: true },
+      select: { userId: true, productId: true, quantity: true },
     });
 
     // Group by user and calculate similarity score
     const userSimilarities = new Map();
 
-    similarUserInteractions.forEach(({ userId: otherUserId, weight }) => {
+    similarUserInteractions.forEach(({ userId: otherUserId, quantity }) => {
       const existing = userSimilarities.get(otherUserId) || 0;
-      userSimilarities.set(otherUserId, existing + (weight || 1.0));
+      userSimilarities.set(otherUserId, existing + (quantity || 1.0));
     });
 
     // Filter by minimum similarity
@@ -319,11 +340,10 @@ async function scoreSimilarUsersProducts(userId, options = {}) {
     // Get products from similar users (excluding user's purchases)
     const similarUserIds = similarUsers.map((u) => u.userId);
 
-    const similarUsersProducts = await prisma.interaction.findMany({
+    const similarUsersProducts = await prisma.orderItem.findMany({
       where: {
         userId: { in: similarUserIds },
         productId: { notIn: userProductIds },
-        type: "PURCHASE",
       },
       include: { product: true },
     });
@@ -341,7 +361,7 @@ async function scoreSimilarUsersProducts(userId, options = {}) {
       if (!similarUser) return;
 
       // Weight vote by similarity to source user
-      const voteWeight = (interaction.weight || 1.0) * similarUser.score;
+      const voteWeight = (interaction.quantity || 1.0) * similarUser.score;
 
       // Aggregate
       const existing = productScores.get(productId) || 0;

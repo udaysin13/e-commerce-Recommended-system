@@ -293,9 +293,6 @@ async function getCategories() {
   }
 }
 
-  return { message: "Product deleted successfully" };
-}
-
 /**
  * Get similar products (same category)
  */

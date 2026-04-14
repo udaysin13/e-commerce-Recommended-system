@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import ProductCard from './ProductCard';
-import { getRecommendations } from '@/lib/recommendationApi';
+import { getRecommendationsWithFallback } from '@/lib/recommendationApi';
 
 /**
  * RecommendationsSection Component
@@ -41,24 +41,38 @@ export default function RecommendationsSection({
       setError(null);
 
       try {
-        const response = await getRecommendations(userId, {
+        const response = await getRecommendationsWithFallback(userId, {
           algorithm: selectedAlgorithm,
           limit,
           includeExplanations: true,
         });
 
-        if (response.success && response.data?.length > 0) {
-          setRecommendations(response.data);
-        } else if (!response.success) {
-          setError(response.error || 'Failed to fetch recommendations');
+        // Handle response - could be from API or fallback
+        if (response && response.data) {
+          if (Array.isArray(response.data) && response.data.length > 0) {
+            setRecommendations(response.data);
+            setError(null);
+          } else if (Array.isArray(response.data) && response.data.length === 0) {
+            // Empty recommendations from API
+            setRecommendations([]);
+            setError(null);
+          } else {
+            // Unexpected data format
+            setRecommendations([]);
+            setError('Unexpected response format');
+          }
+        } else if (response && response.error) {
+          // Error response
+          setError(response.error);
           setRecommendations([]);
         } else {
-          // No recommendations but no error
+          // Empty response
           setRecommendations([]);
+          setError(null);
         }
       } catch (err) {
         console.error('Error fetching recommendations:', err);
-        setError(err.message || 'Failed to load recommendations');
+        setError(err.message || 'Failed to fetch recommendations. Please try another algorithm or refresh.');
         setRecommendations([]);
       } finally {
         setLoading(false);

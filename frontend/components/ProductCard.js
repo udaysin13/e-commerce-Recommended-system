@@ -29,15 +29,19 @@ export default function ProductCard({ product, caption, isLoading = false, error
   }
 
   const imageSrc =
-    typeof product.imageUrl === "string" && product.imageUrl.trim()
+    typeof product.imageUrl === "string" && product.imageUrl?.trim()
       ? product.imageUrl
-      : "/product-images/headphones.svg";
+      : typeof product.image === "string" && product.image?.trim()
+        ? product.image
+      : typeof product.productImage === "string" && product.productImage?.trim()
+        ? product.productImage
+      : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop";
   const price =
     typeof product.price === "number" && Number.isFinite(product.price) ? product.price : 0;
   const discount = Number(product.discount || 0);
   const originalPrice = discount ? Math.round(price / (1 - discount / 100)) : price;
   const rating = Number(product.rating || 4.3);
-  const reviews = Number(product.reviews || 120);
+  const reviews = Number(product.reviews || product.reviewCount || 120);
   const badge = product.badge || (discount ? "Deal" : "Popular");
   const productHref = product.id ? `/products/${product.id}` : "/";
 

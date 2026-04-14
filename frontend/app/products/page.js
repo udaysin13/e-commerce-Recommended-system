@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import ProductCard from '@/components/ProductCard';
 import RecommendationsSection from '@/components/RecommendationsSection';
+import { fetchProducts as fetchProductsFromApi } from '@/lib/api';
 
 /**
  * Products Page
@@ -70,18 +71,13 @@ export default function ProductsPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/products');
-      if (!response.ok) {
-        throw new Error('Failed to fetch products');
-      }
-
-      const data = await response.json();
-      setProducts(data.data || data || []);
+      const data = await fetchProductsFromApi();
+      setProducts(normalizeProductList(data));
     } catch (err) {
       console.error('Error fetching products:', err);
-      setError(err.message);
       // Use mock data for demo if API fails
       setProducts(getMockProducts());
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -345,4 +341,12 @@ function getMockProducts() {
       inStock: true,
     },
   ];
+}
+
+function normalizeProductList(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.items)) return response.items;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.products)) return response.products;
+  return [];
 }

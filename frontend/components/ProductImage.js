@@ -47,7 +47,8 @@ function shouldSkipImageOptimization(src) {
   return (
     typeof src === "string" &&
     (src.startsWith("https://commons.wikimedia.org") ||
-      src.startsWith("https://upload.wikimedia.org"))
+      src.startsWith("https://upload.wikimedia.org") ||
+      src.startsWith("https://images.unsplash.com"))
   );
 }
 
