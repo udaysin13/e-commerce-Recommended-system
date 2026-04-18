@@ -1,0 +1,153 @@
+import type { Cart } from "@/types/cart";
+import type { Product, ProductsResponse } from "@/types/product";
+import { storefrontCategories } from "@/lib/categories";
+
+export const categories = storefrontCategories;
+
+export const mockProducts: Product[] = [
+  {
+    id: "prod-headphones-001",
+    name: "Aurora Wireless Headphones",
+    slug: "aurora-wireless-headphones",
+    sku: "AUD-AUR-001",
+    description:
+      "Balanced wireless headphones with active noise reduction, plush ear cups, and all-day battery life.",
+    shortDescription: "Noise reduction, 34-hour battery, crisp audio.",
+    brand: "Northline",
+    price: 129.99,
+    compareAtPrice: 159.99,
+    currency: "USD",
+    stockQuantity: 28,
+    imageUrl:
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80",
+    imageUrls: [],
+    tags: ["audio", "wireless", "travel"],
+    attributes: { color: "Graphite", battery: "34 hours" },
+    averageRating: 4.7,
+    ratingCount: 214,
+    viewCount: 3200,
+    clickCount: 1480,
+    cartCount: 920,
+    purchaseCount: 680,
+    isFeatured: true,
+    createdAt: "2026-04-10T10:00:00.000Z",
+    updatedAt: "2026-04-10T10:00:00.000Z",
+    category: categories[0],
+  },
+  {
+    id: "prod-lamp-002",
+    name: "Focus Desk Lamp",
+    slug: "focus-desk-lamp",
+    sku: "HME-LMP-002",
+    description:
+      "A compact desk lamp with warm and cool modes, touch controls, and a sturdy metal base.",
+    shortDescription: "Adjustable light for deep work and late reading.",
+    brand: "Luma Works",
+    price: 48,
+    compareAtPrice: null,
+    currency: "USD",
+    stockQuantity: 41,
+    imageUrl:
+      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=80",
+    imageUrls: [],
+    tags: ["workspace", "lighting", "home"],
+    attributes: { modes: 4, material: "Metal" },
+    averageRating: 4.5,
+    ratingCount: 89,
+    viewCount: 860,
+    clickCount: 390,
+    cartCount: 210,
+    purchaseCount: 132,
+    isFeatured: false,
+    createdAt: "2026-04-09T10:00:00.000Z",
+    updatedAt: "2026-04-09T10:00:00.000Z",
+    category: categories[3],
+  },
+  {
+    id: "prod-sneaker-003",
+    name: "Stride Knit Sneakers",
+    slug: "stride-knit-sneakers",
+    sku: "STY-SNK-003",
+    description:
+      "Lightweight knit sneakers with cushioned soles and a clean everyday profile.",
+    shortDescription: "Soft knit upper, cushioned daily support.",
+    brand: "Velo",
+    price: 92,
+    compareAtPrice: 120,
+    currency: "USD",
+    stockQuantity: 19,
+    imageUrl:
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+    imageUrls: [],
+    tags: ["sneakers", "style", "comfort"],
+    attributes: { upper: "Knit", sole: "EVA" },
+    averageRating: 4.8,
+    ratingCount: 176,
+    viewCount: 2410,
+    clickCount: 1104,
+    cartCount: 702,
+    purchaseCount: 510,
+    isFeatured: true,
+    createdAt: "2026-04-08T10:00:00.000Z",
+    updatedAt: "2026-04-08T10:00:00.000Z",
+    category: categories[2],
+  },
+  {
+    id: "prod-yoga-004",
+    name: "Balance Yoga Mat",
+    slug: "balance-yoga-mat",
+    sku: "WLN-MAT-004",
+    description:
+      "A grippy, supportive mat made for home workouts, studio sessions, and daily stretching.",
+    shortDescription: "Stable grip with soft joint support.",
+    brand: "Aster",
+    price: 39.5,
+    compareAtPrice: null,
+    currency: "USD",
+    stockQuantity: 64,
+    imageUrl:
+      "https://images.unsplash.com/photo-1592432678016-e910b452f9a2?auto=format&fit=crop&w=900&q=80",
+    imageUrls: [],
+    tags: ["fitness", "wellness", "studio"],
+    attributes: { thickness: "6mm", surface: "Non-slip" },
+    averageRating: 4.6,
+    ratingCount: 101,
+    viewCount: 1120,
+    clickCount: 520,
+    cartCount: 288,
+    purchaseCount: 240,
+    isFeatured: false,
+    createdAt: "2026-04-07T10:00:00.000Z",
+    updatedAt: "2026-04-07T10:00:00.000Z",
+    category: categories[5],
+  },
+];
+
+export const mockProductsResponse: ProductsResponse = {
+  items: mockProducts,
+  pagination: {
+    page: 1,
+    limit: 12,
+    totalItems: mockProducts.length,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  },
+};
+
+export const mockCart: Cart = {
+  id: "cart-demo",
+  status: "ACTIVE",
+  items: [
+    {
+      id: "cart-item-001",
+      productId: mockProducts[0].id,
+      quantity: 1,
+      unitPrice: mockProducts[0].price,
+      lineTotal: mockProducts[0].price,
+      product: mockProducts[0],
+    },
+  ],
+  itemCount: 1,
+  subtotal: mockProducts[0].price,
+};

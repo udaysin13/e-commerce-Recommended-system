@@ -1,129 +1,368 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-// User Model
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum CartStatus {
+  ACTIVE
+  CHECKED_OUT
+  ABANDONED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PACKED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  RAZORPAY
+  STRIPE
+  MANUAL
+}
+
+enum RecommendationType {
+  PERSONALIZED
+  CONTENT_BASED
+  COLLABORATIVE
+  TRENDING
+  SIMILAR_PRODUCTS
+  RECENTLY_VIEWED
+}
+
+enum ProductInteractionType {
+  VIEW
+  CLICK
+  CART_ADD
+  PURCHASE
+}
+
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  password      String
-  name          String?
-  phone         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  firstName    String?
+  lastName     String?
+  role         UserRole      @default(CUSTOMER)
+  isActive     Boolean       @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  cart          Cart?
-  orders        Order[]
-  viewHistory   ViewHistory[]
-  orderItems    OrderItem[]
+  carts                 Cart[]
+  orders                Order[]
+  productViews          ProductView[]
+  productInteractions   ProductInteraction[]
+  wishlistItems         Wishlist[]
+  recommendationCaches  RecommendationCache[]
 
-  @@index([email])
+  @@index([role])
+  @@index([createdAt])
+  @@map("users")
 }
 
-// Product Model
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean    @default(true)
+  parentId    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@index([parentId])
+  @@index([isActive])
+  @@map("categories")
+}
+
 model Product {
-  id            Int      @id @default(autoincrement())
-  name          String
-  category      String
-  description   String   @db.Text
-  price         Float
-  discount      Int      @default(0)
-  imageUrl      String
-  rating        Float    @default(0)
-  reviews       Int      @default(0)
-  inStock       Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  categoryId      String
+  name            String
+  slug            String   @unique
+  sku             String   @unique
+  description     String?
+  shortDescription String?
+  brand           String?
+  price           Decimal  @db.Decimal(10, 2)
+  compareAtPrice  Decimal? @db.Decimal(10, 2)
+  currency        String   @default("USD")
+  stockQuantity   Int      @default(0)
+  imageUrl        String?
+  imageUrls       String[] @default([])
+  tags            String[] @default([])
+  attributes      Json?
+  averageRating   Decimal  @default(0) @db.Decimal(3, 2)
+  ratingCount     Int      @default(0)
+  viewCount       Int      @default(0)
+  clickCount      Int      @default(0)
+  cartCount       Int      @default(0)
+  purchaseCount   Int      @default(0)
+  isFeatured      Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  cartItems     CartItem[]
-  orderItems    OrderItem[]
-  viewHistory   ViewHistory[]
+  category                         Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  cartItems                        CartItem[]
+  orderItems                       OrderItem[]
+  productViews                     ProductView[]
+  productInteractions              ProductInteraction[]
+  wishlistItems                    Wishlist[]
+  recommendationCaches             RecommendationCache[] @relation("RecommendedProduct")
+  sourceRecommendationCaches       RecommendationCache[] @relation("SourceProduct")
 
-  @@index([category])
-  @@index([name])
+  @@index([categoryId])
+  @@index([brand])
+  @@index([isActive, isFeatured])
+  @@index([createdAt])
+  @@index([viewCount])
+  @@index([clickCount])
+  @@index([cartCount])
+  @@index([purchaseCount])
+  @@map("products")
 }
 
-// Cart Model
 model Cart {
-  id            Int      @id @default(autoincrement())
-  userId        Int      @unique
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String     @id @default(cuid())
+  userId    String
+  status    CartStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items         CartItem[]
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
 
   @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+  @@map("carts")
 }
 
-// CartItem Model
 model CartItem {
-  id            Int      @id @default(autoincrement())
-  cartId        Int
-  productId     Int
-  quantity      Int      @default(1)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  quantity  Int      @default(1)
+  unitPrice Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  cart          Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product       Product  @relation(fields: [productId], references: [id])
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@unique([cartId, productId])
-  @@index([cartId])
   @@index([productId])
+  @@map("cart_items")
 }
 
-// Order Model
 model Order {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  status        String   @default("pending")
-  total         Float
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                      String        @id @default(cuid())
+  userId                  String
+  orderNumber             String        @unique
+  status                  OrderStatus   @default(PENDING)
+  paymentStatus           PaymentStatus @default(PENDING)
+  paymentMethod           PaymentMethod?
+  paymentId               String?       @unique
+  transactionId           String?       @unique
+  fullName                String?
+  phone                   String?
+  addressLine1            String?
+  addressLine2            String?
+  city                    String?
+  state                   String?
+  postalCode              String?
+  country                 String?
+  subtotal                Decimal       @db.Decimal(10, 2)
+  taxAmount               Decimal       @default(0) @db.Decimal(10, 2)
+  shippingAmount          Decimal       @default(0) @db.Decimal(10, 2)
+  discountAmount          Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount             Decimal       @db.Decimal(10, 2)
+  currency                String        @default("USD")
+  shippingName            String?
+  shippingAddress         String?
+  shippingCity            String?
+  shippingState           String?
+  shippingZip             String?
+  shippingCountry         String?
+  trackingNumber          String?
+  courierName             String?
+  estimatedDeliveryDate   DateTime?
+  placedAt                DateTime      @default(now())
+  paidAt                  DateTime?
+  deliveredAt             DateTime?
+  cancelledAt             DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items         OrderItem[]
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items           OrderItem[]
+  trackingHistory OrderTrackingHistory[]
 
   @@index([userId])
-  @@index([createdAt])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([paymentId])
+  @@index([transactionId])
+  @@index([placedAt])
+  @@map("orders")
 }
 
-// OrderItem Model
 model OrderItem {
-  id            Int      @id @default(autoincrement())
-  orderId       Int
-  productId     Int
-  userId        Int
-  quantity      Int
-  price         Float
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  productName String
+  sku         String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product       Product  @relation(fields: [productId], references: [id])
-  user          User     @relation(fields: [userId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
   @@index([productId])
-  @@index([userId])
+  @@index([sku])
+  @@map("order_items")
 }
 
-// ViewHistory Model
-model ViewHistory {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  productId     Int
-  viewedAt      DateTime @default(now())
+model ProductView {
+  id        String   @id @default(cuid())
+  userId    String?
+  productId String
+  sessionId String?
+  ipAddress String?
+  userAgent String?
+  referrer  String?
+  viewedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([productId])
+  @@index([sessionId])
   @@index([viewedAt])
+  @@index([userId, viewedAt])
+  @@index([productId, viewedAt])
+  @@map("product_views")
+}
+
+model ProductInteraction {
+  id        String                 @id @default(cuid())
+  userId    String?
+  productId String
+  type      ProductInteractionType
+  weight    Int
+  quantity  Int?
+  sessionId String?
+  metadata  Json?
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId, type])
+  @@index([userId, productId])
+  @@index([productId, type])
+  @@index([userId, productId, type])
+  @@map("product_interactions")
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@index([createdAt])
+  @@map("wishlists")
+}
+
+model RecommendationCache {
+  id                   String             @id @default(cuid())
+  userId               String?
+  sourceProductId      String?
+  recommendedProductId String
+  type                 RecommendationType
+  score                Decimal            @db.Decimal(8, 6)
+  reason               String?
+  metadata             Json?
+  expiresAt            DateTime
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user               User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceProduct      Product? @relation("SourceProduct", fields: [sourceProductId], references: [id], onDelete: Cascade)
+  recommendedProduct Product  @relation("RecommendedProduct", fields: [recommendedProductId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sourceProductId])
+  @@index([recommendedProductId])
+  @@index([type])
+  @@index([expiresAt])
+  @@index([userId, type])
+  @@index([sourceProductId, type])
+  @@unique([userId, sourceProductId, recommendedProductId, type])
+  @@map("recommendation_caches")
+}
+
+model OrderTrackingHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  message   String?
+  note      String?
+  updatedBy String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([createdAt])
+  @@index([status])
+  @@map("order_tracking_history")
 }

@@ -29,6 +29,9 @@ yarn-error.log*
 dist/
 build/
 
+# Generated clients
+backend/src/generated/
+
 # TypeScript
 tsconfig.tsbuildinfo
 

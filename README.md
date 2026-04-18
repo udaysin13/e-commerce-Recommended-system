@@ -1,251 +1,252 @@
-# E-commerce Recommendation System
+# RecomCart: E-commerce Recommendation System
 
-A full-stack e-commerce demo with product browsing, JWT authentication, cart checkout, and a recommendation engine built around user behavior, category similarity, co-purchases, recently viewed products, and trending products.
+RecomCart is a modern full-stack e-commerce recommendation project built to demonstrate clean architecture, typed APIs, user behavior tracking, and hybrid product recommendations.
 
-## Project Overview
+The project is structured as a production-style multi-service application: a Next.js storefront, an Express + Prisma backend, a PostgreSQL database, and a FastAPI recommendation service.
 
-This project shows an end-to-end shopping flow:
+## Highlights
 
-- Browse, search, and filter products by category.
-- View product details and related recommendation sections.
-- Sign up or log in with JWT authentication.
-- Add products and recommendations to the cart.
-- Checkout from the cart and create orders.
-- Track product views for recently viewed and content-based recommendations.
-
-The backend includes seeded demo data and a fallback in-memory data store for product/recommendation browsing if the database is unavailable. Account-owned APIs are protected with JWT middleware.
+- Modern e-commerce storefront with product browsing, search, filters, sorting, product detail pages, auth screens, cart UI, and recommendation sections.
+- TypeScript Express backend with JWT authentication, Prisma ORM, PostgreSQL schema, cart/order workflows, product APIs, and interaction tracking.
+- Python FastAPI recommendation service with content-based filtering, collaborative filtering, popularity ranking, and hybrid scoring.
+- Realistic Prisma seed data with categories, products, users, carts, orders, wishlists, views, clicks, cart-add events, purchases, and recommendation cache examples.
+- Clean documentation for setup, architecture, testing, interview explanation, and future upgrades.
 
 ## Tech Stack
 
-| Area | Tools |
+| Layer | Technology |
 | --- | --- |
-| Frontend | Next.js 16, React 19, Tailwind CSS 4 |
-| Backend | Node.js, Express 5 |
-| Database | PostgreSQL, Prisma 5.22 |
-| Auth | JWT-style HS256 tokens with Node `crypto`, password hashing with `scrypt` |
-| Dev | npm, Docker Compose |
+| Frontend | Next.js, React, TypeScript, Tailwind CSS |
+| Backend API | Node.js, Express, TypeScript, JWT |
+| Database | PostgreSQL, Prisma ORM |
+| Recommendation Service | Python, FastAPI, pandas, scikit-learn |
+| Recommendation Methods | TF-IDF, cosine similarity, user-item matrix, weighted events, hybrid ranking |
 
-## Screenshots
-
-Add or update screenshots in `docs/screenshots/` before publishing.
-
-| Home | Product Detail | Cart |
-| --- | --- | --- |
-| ![Home page](docs/screenshots/home.png) | ![Product detail page](docs/screenshots/product-detail.png) | ![Cart page](docs/screenshots/cart.png) |
-
-## Project Structure
+## Architecture
 
 ```text
-.
-+-- backend/
-|   +-- controllers/
-|   +-- lib/
-|   +-- middleware/
-|   +-- prisma/
-|   |   +-- schema.prisma
-|   |   +-- seed.js
-|   +-- routes/
-|   +-- services/
-|   +-- package.json
-|   +-- server.js
-+-- frontend/
-|   +-- app/
-|   +-- components/
-|   +-- lib/
-|   +-- package.json
-+-- docker-compose.yml
-+-- package.json
-+-- README.md
+frontend/
+  Next.js storefront
+  Calls backend APIs for products, cart, auth, and recommendations
+
+backend/
+  Express API gateway
+  Owns auth, product catalog, cart, orders, events, and database access
+  Calls recommendation-service for ranked recommendations
+
+recommendation-service/
+  FastAPI service
+  Computes content-based, collaborative, popularity, and hybrid recommendations
+
+docs/
+  Architecture, setup, testing, feature summary, and interview notes
+
+legacy/
+  Archived previous implementation and generated notes
 ```
 
-## Setup Steps
+## Core Features
 
-### 1. Install dependencies
+- User signup, login, JWT generation, and protected route middleware.
+- Product listing with pagination, search, category filtering, and sorting.
+- Product detail page with category information and similar recommendations.
+- Cart add, view, update quantity, and remove item operations.
+- Order creation from cart using Prisma transactions.
+- **Real-time order tracking** with status timeline, tracking history, and courier information.
+- Admin order management with status updates and tracking information.
+- Product interaction tracking for views, clicks, cart additions, and purchases.
+- Weighted event model:
 
-```powershell
-npm install
-npm --prefix backend install
-npm --prefix frontend install
+```text
+VIEW      = 1
+CLICK     = 2
+CART_ADD  = 4
+PURCHASE  = 8
 ```
 
-### 2. Configure environment variables
+- Recommendation APIs:
 
-Create `backend/.env`:
-
-```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/fluxcart"
-JWT_SECRET="replace-with-a-long-random-secret"
-FRONTEND_URL="http://localhost:3000"
-PORT=5000
+```text
+GET /recommendations/home/:userId
+GET /recommendations/product/:productId
+GET /recommendations/user/:userId
 ```
 
-Create `frontend/.env.local`:
+- Order tracking APIs for real-time status updates and history.
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000
-```
+## Quick Start
 
-### 3. Start PostgreSQL
+### 1. Backend
 
-Use your local PostgreSQL instance, or start the included Docker service:
-
-```powershell
-docker compose up -d postgres
-```
-
-If you use Docker, match `DATABASE_URL` to `docker-compose.yml`:
-
-```env
-DATABASE_URL="postgresql://fluxcart:fluxcart@localhost:5432/fluxcart"
-```
-
-### 4. Prepare Prisma and seed data
-
-```powershell
+```bash
 cd backend
-npx prisma generate
-npx prisma migrate dev --name init
-node prisma/seed.js
-cd ..
-```
-
-### 5. Run the app
-
-```powershell
+copy .env.example .env
+npm install
+npm run prisma:generate
+npm run prisma:migrate -- --name init
+npm run prisma:seed
 npm run dev
 ```
 
-The root script opens the backend on `http://localhost:5000` and starts the frontend on `http://localhost:3000`.
-
-You can also run them separately:
-
-```powershell
-npm run dev:backend
-npm run dev:frontend
-```
-
-## Demo Login
+Backend runs on:
 
 ```text
-alice@example.com
-alice123
+http://localhost:4000
 ```
 
-Other seeded users:
+Demo accounts all use:
 
 ```text
-bob@example.com / bob123
-cara@example.com / cara123
+Password123
 ```
 
-## API Endpoints
+Useful demo users:
 
-Base URL: `http://localhost:5000`
+```text
+demo@example.com
+ada@example.com
+alan@example.com
+grace@example.com
+```
 
-### Auth
+### 2. Recommendation Service
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| POST | `/auth/login` | Login and receive a token |
-| POST | `/auth/signup` | Create an account and receive a token |
-| POST | `/auth` | Backward-compatible login/signup using `mode` |
+```bash
+cd recommendation-service
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload --port 8000
+```
 
-Example:
+Docker fallback:
 
-```http
+```bash
+cd recommendation-service
+docker build -t recommendation-service .
+docker run --rm -p 8000:8000 recommendation-service
+```
+
+Recommendation service runs on:
+
+```text
+http://localhost:8000
+```
+
+### 3. Frontend
+
+```bash
+cd frontend
+copy .env.example .env.local
+npm install
+npm run dev
+```
+
+Frontend runs on:
+
+```text
+http://localhost:3000
+```
+
+## Important API Routes
+
+```text
+POST /auth/signup
 POST /auth/login
-Content-Type: application/json
+GET  /auth/me
 
-{
-  "email": "alice@example.com",
-  "password": "alice123"
-}
+GET /products
+GET /products/search
+GET /products/:id
+
+POST   /cart
+GET    /cart
+PATCH  /cart/:id
+DELETE /cart/:id
+
+POST /orders
+GET  /orders
+GET  /orders/:id
+
+GET /order-tracking
+GET /order-tracking/:id
+GET /order-tracking/:id/tracking
+GET /order-tracking/stats
+PATCH /order-tracking/admin/:id/status
+
+POST /events/view
+POST /events/click
+
+GET /recommendations/home/:userId
+GET /recommendations/product/:productId
+GET /recommendations/user/:userId
 ```
 
-Protected APIs require:
+## Testing
 
-```http
-Authorization: Bearer <token>
+Backend:
+
+```bash
+cd backend
+npm run build
 ```
 
-### Products
+Frontend:
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| GET | `/products?page=1&limit=8` | List products |
-| GET | `/products?category=Electronics` | Filter by category |
-| GET | `/products?search=phone` | Search products |
-| GET | `/products/:id` | Product detail with similar products |
-
-### Cart Protected
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| GET | `/cart/:userId` | Get the user's cart |
-| POST | `/cart/:userId/items` | Add an item to cart |
-| PUT | `/cart/items/:itemId` | Update cart item quantity |
-| DELETE | `/cart/items/:itemId` | Remove cart item |
-| DELETE | `/cart/:userId` | Clear the user's cart |
-| GET | `/cart/:userId/total` | Get cart totals |
-
-### Orders Protected
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| POST | `/orders` | Create an order from the user's cart |
-
-### Users Protected
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| GET | `/users/:userId` | Get profile |
-| PUT | `/users/:userId` | Update profile |
-| GET | `/users/:userId/orders` | Get order history |
-| GET | `/users/:userId/history` | Get view history |
-| DELETE | `/users/:userId` | Delete account |
-
-### Recommendations
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| GET | `/recommendations/popular` | Popular products |
-| GET | `/recommendations/trending` | Trending products from recent views/orders |
-| GET | `/recommendations/similar/:productId` | Similar products |
-| GET | `/recommendations/category-similarity/:productId` | Same-category and similar-price products |
-| GET | `/recommendations/users-also-bought/:productId` | Co-purchase recommendations |
-| GET | `/recommendations/recently-viewed/:userId` | Recently viewed products, protected |
-| POST | `/recommendations/track-view` | Track product view, protected |
-| GET | `/recommendations/:userId` | Hybrid recommendations, protected |
-| GET | `/recommendations/:userId/hybrid` | Hybrid recommendations, protected |
-| GET | `/recommendations/:userId/content-based` | Content-based recommendations, protected |
-| GET | `/recommendations/:userId/collaborative` | Collaborative recommendations, protected |
-| GET | `/recommendations/:userId/category` | Category-based recommendations, protected |
-| GET | `/recommendations/:userId/overview?productId=1` | Combined recommendation groups, protected |
-
-## Recommendation Logic
-
-The recommendation engine includes:
-
-- Users who bought this also bought: groups order items by co-purchased products.
-- Category similarity: prioritizes same-category products and backs off to similar prices.
-- Recently viewed: uses `ViewHistory` records per user.
-- Trending: scores products from recent views, recent purchases, ratings, and reviews.
-- Hybrid: combines content-based, collaborative, and trending signals.
-
-## Useful Commands
-
-```powershell
-npm run dev
-npm run dev:backend
-npm run dev:frontend
-npm --prefix frontend run build
-npm --prefix backend run prisma:generate
-npm --prefix backend run prisma:migrate
-npm --prefix backend run prisma:seed
+```bash
+cd frontend
+npm run typecheck
+npm run build
 ```
 
-## Notes
+Recommendation service:
 
-- Public product browsing is open.
-- Cart, orders, user data, recently viewed, and user-personalized recommendations require JWT auth.
-- If port `3000` or `5000` is already in use, stop the older dev server before running `npm run dev`.
+```bash
+cd recommendation-service
+pytest
+```
+
+Manual API smoke requests are available in:
+
+```text
+backend/tests/api-smoke.http
+```
+
+More details:
+
+```text
+docs/testing-strategy.md
+```
+
+## Documentation
+
+- `docs/architecture.md`: system design and service boundaries
+- `docs/setup.md`: local setup instructions
+- `docs/feature-summary.md`: implemented feature list
+- `docs/testing-strategy.md`: pragmatic testing plan
+- `docs/interview-notes.md`: resume, viva, and interview talking points
+- `docs/future-scope.md`: future upgrades and roadmap
+
+## Resume Description
+
+Built a full-stack e-commerce recommendation platform using Next.js, Express, Prisma, PostgreSQL, and FastAPI, with JWT auth, cart/order workflows, interaction tracking, and hybrid recommendations.
+
+Designed recommendation-ready data pipelines using weighted user events, content similarity, collaborative filtering, popularity ranking, and graceful backend fallbacks.
+
+## Interview Summary
+
+RecomCart is a resume-ready e-commerce recommendation system that separates the storefront, core backend, database, and recommendation engine into clean services. The backend captures user behavior such as views, clicks, cart additions, and purchases, then uses those weighted signals with product metadata to serve personalized, similar-product, and trending recommendations.
+
+## Future Upgrades
+
+- Redis caching for product lists, sessions, recommendation results, and rate limiting.
+- Vector search with pgvector, Pinecone, Weaviate, or Qdrant for semantic product similarity.
+- Advanced ranking with learning-to-rank models and real-time feature stores.
+- Background jobs for scheduled recommendation cache refreshes.
+- A/B testing for recommendation strategies.
+- Admin dashboard for catalog, orders, and recommendation analytics.
+- Event streaming with Kafka, Redpanda, or RabbitMQ.
+- Observability with OpenTelemetry, Prometheus, and Grafana.
+- Payment integration with Stripe.
+- Deployment with Docker Compose, CI/CD, and cloud infrastructure.

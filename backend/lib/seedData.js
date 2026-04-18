@@ -19,7 +19,8 @@ const users = [
     "name": "Bob Smith",
     "phone": "+91-9876543211",
     "address": "456 Oak Ave, Delhi",
-    "preferences": "{\"notifications\":false,\"theme\":\"light\"}",
+    "preferences": "{\"notifi
+    cations\":false,\"theme\":\"light\"}",
     "totalSpent": 89000,
     "totalOrders": 15,
     "lastPurchaseAt": "2024-01-10T00:00:00.000Z"
