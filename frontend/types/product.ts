@@ -27,6 +27,9 @@ export type Product = {
   cartCount: number;
   purchaseCount: number;
   isFeatured: boolean;
+  popularityBadges?: string[];
+  smartTags?: string[];
+  recommendationReason?: string | null;
   createdAt: string;
   updatedAt: string;
   category: Category;

@@ -40,6 +40,9 @@ export type ProductResponse = {
   cartCount: number;
   purchaseCount: number;
   isFeatured: boolean;
+  popularityBadges?: string[];
+  smartTags?: string[];
+  recommendationReason?: string | null;
   createdAt: Date;
   updatedAt: Date;
   category: ProductCategoryResponse;

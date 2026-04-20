@@ -2,13 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductPageTracker } from "@/components/ProductPageTracker";
 import { ProductStatsPanel } from "@/components/ProductStatsPanel";
+import { RecommendationLab } from "@/components/RecommendationLab";
 import { RecommendationSection } from "@/components/RecommendationSection";
+import { SmartBundleSection } from "@/components/SmartBundleSection";
+import { ProductReviewSummary } from "@/components/ProductReviewSummary";
 import { formatCurrency, formatRating } from "@/lib/format";
+import { getProductReviewSummary } from "@/lib/ai";
 import { getProductById, getProducts } from "@/lib/api";
-import {
-  getProductRecommendations,
-  recommendedProductsToProducts,
-} from "@/lib/recommendationsApi";
 import { BuyNowButton } from "@/components/BuyNowButton";
 import { AddToCartButton } from "@/components/AddToCartButton";
 
@@ -23,15 +23,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   if (!product) {
     notFound();
   }
-
-  const recommendations = await getProducts({
-    category: product.category.slug,
-    limit: 3,
-    sortBy: "rating",
-    sortOrder: "desc",
-  });
-  const productRecommendations = await getProductRecommendations(product.id, 3);
-  const recommendedProducts = recommendedProductsToProducts(productRecommendations);
+  const [recommendations, reviewSummary] = await Promise.all([
+    getProducts({
+      category: product.category.slug,
+      limit: 3,
+      sortBy: "rating",
+      sortOrder: "desc",
+    }),
+    getProductReviewSummary(product.id),
+  ]);
 
   return (
     <>
@@ -51,6 +51,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </Link>
           <p className="text-sm font-semibold uppercase text-coral">{product.category.name}</p>
           <h1 className="mt-3 text-4xl font-bold leading-tight text-ink">{product.name}</h1>
+          {product.smartTags?.length ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {product.smartTags.map((tag) => (
+                <span key={tag} className="rounded bg-mist px-3 py-2 text-xs font-bold text-ink/70">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="mt-5">
             <ProductStatsPanel product={product} emphasized />
           </div>
@@ -80,13 +89,19 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
       </section>
 
+      <ProductReviewSummary summary={reviewSummary} />
+
+      <SmartBundleSection productId={product.id} />
+      <RecommendationLab
+        kind="product"
+        productId={product.id}
+        eyebrow="Recommendation Intelligence"
+        title="Why this product leads to these next picks"
+        description="The engine blends similarity, behavior signals, and mode-based ranking so you can switch between focused personalization and broader exploration without losing explainability."
+      />
       <RecommendationSection
         title="More from this category"
-        products={
-          recommendedProducts.length > 0
-            ? recommendedProducts
-            : recommendations.items.filter((item) => item.id !== product.id)
-        }
+        products={recommendations.items.filter((item) => item.id !== product.id)}
       />
     </>
   );

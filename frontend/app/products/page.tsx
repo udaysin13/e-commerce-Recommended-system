@@ -5,6 +5,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { SearchBar } from "@/components/SearchBar";
 import { SortDropdown } from "@/components/SortDropdown";
 import { getProducts } from "@/lib/api";
+import { aiSearchProducts } from "@/lib/ai";
 import { storefrontCategories } from "@/lib/categories";
 import type { ProductListParams } from "@/types/product";
 
@@ -44,8 +45,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     sortBy: (getFirst(params.sortBy) as ProductListParams["sortBy"]) ?? "newest",
     sortOrder: (getFirst(params.sortOrder) as ProductListParams["sortOrder"]) ?? "desc",
   };
-  const products = await getProducts(query);
+  const aiSearch = query.search?.trim() ? await aiSearchProducts(query) : null;
+  const products = aiSearch ?? (await getProducts(query));
   const isAllView = !query.category;
+  const hasSearch = Boolean(query.search?.trim());
   const activeCategoryName =
     storefrontCategories.find((category) => category.slug === query.category)?.name ?? "Products";
 
@@ -53,17 +56,40 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <Reveal className="mb-8">
         <p className="text-sm font-semibold uppercase text-teal">
-          {isAllView ? "Full marketplace" : activeCategoryName}
+          {hasSearch ? "Search results" : isAllView ? "Full marketplace" : activeCategoryName}
         </p>
         <h1 className="mt-2 text-3xl font-bold text-ink">
-          {isAllView ? "Discover Products Across All Categories" : `Shop ${activeCategoryName}`}
+          {hasSearch
+            ? `Showing results for "${query.search}"`
+            : isAllView
+              ? "Discover Products Across All Categories"
+              : `Shop ${activeCategoryName}`}
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/65">
-          {isAllView
-            ? "Explore a mixed catalog of standout finds from electronics, fashion, footwear, home and kitchen, beauty, sports and fitness, books, and accessories."
-            : `Browse ${activeCategoryName.toLowerCase()} products with focused filtering, clean sorting, and consistent card layouts.`}
+          {hasSearch
+            ? "Search checks product names, descriptions, brands, and categories so partial and category-style queries feel natural."
+            : isAllView
+              ? "Explore a mixed catalog of standout finds from electronics, fashion, footwear, home and kitchen, beauty, sports and fitness, books, and accessories."
+              : `Browse ${activeCategoryName.toLowerCase()} products with focused filtering, clean sorting, and consistent card layouts.`}
         </p>
-        {isAllView ? (
+        {hasSearch ? (
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold uppercase text-ink/55">
+            <span className="rounded border border-line bg-white px-3 py-2">
+              Natural language search
+            </span>
+            <span className="rounded border border-line bg-white px-3 py-2">
+              Category-aware search
+            </span>
+            <span className="rounded border border-line bg-white px-3 py-2">
+              Multi-field search
+            </span>
+            {aiSearch?.intent.preferred_tags?.map((tag) => (
+              <span key={tag} className="rounded border border-line bg-white px-3 py-2">
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : isAllView ? (
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold uppercase text-ink/55">
             {storefrontCategories.map((category) => (
               <span key={category.id} className="rounded border border-line bg-white px-3 py-2">
@@ -90,6 +116,35 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           Page {products.pagination.page} of {Math.max(products.pagination.totalPages, 1)}
         </span>
       </Reveal>
+
+      {aiSearch ? (
+        <Reveal delay={0.11} className="mb-4 rounded border border-line bg-white px-4 py-3 text-sm shadow-sm">
+          <p className="font-semibold text-ink">AI understood: {aiSearch.explanation}</p>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-ink/60">
+            {aiSearch.intent.category ? (
+              <span className="rounded bg-mist px-3 py-2">Category: {aiSearch.intent.category}</span>
+            ) : null}
+            {aiSearch.intent.use_case ? (
+              <span className="rounded bg-mist px-3 py-2">Use case: {aiSearch.intent.use_case}</span>
+            ) : null}
+            {aiSearch.intent.budget_max !== null ? (
+              <span className="rounded bg-mist px-3 py-2">Budget up to {aiSearch.intent.budget_max}</span>
+            ) : null}
+            {aiSearch.intent.audience ? (
+              <span className="rounded bg-mist px-3 py-2">Audience: {aiSearch.intent.audience}</span>
+            ) : null}
+          </div>
+        </Reveal>
+      ) : null}
+
+      {hasSearch && products.pagination.totalItems === 0 ? (
+        <Reveal delay={0.12} className="mb-6 rounded border border-dashed border-line bg-white px-6 py-8 text-center">
+          <p className="text-lg font-bold text-ink">No products found</p>
+          <p className="mt-2 text-sm text-ink/60">
+            Try a different search like &quot;electronics&quot;, &quot;shoe&quot;, or &quot;serum&quot;.
+          </p>
+        </Reveal>
+      ) : null}
 
       <ProductGrid
         products={products.items}

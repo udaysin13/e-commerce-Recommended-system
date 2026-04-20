@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AIShoppingAssistant } from "@/components/AIShoppingAssistant";
 import { Footer } from "@/components/Footer";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Navbar } from "@/components/Navbar";
@@ -20,6 +21,7 @@ export default function RootLayout({
         <AuthProvider>
           <Navbar />
           <main className="min-h-screen">{children}</main>
+          <AIShoppingAssistant />
           <Footer />
         </AuthProvider>
       </body>

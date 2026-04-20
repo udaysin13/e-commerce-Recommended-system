@@ -6,6 +6,10 @@ export * from "./paymentService.js";
 export * from "./productService.js";
 export * from "./recommendationService.js";
 export {
+  chatWithAssistant,
+  searchProductsWithAI,
+} from "./aiService.js";
+export {
   createBuyNowOrder,
   createOrderFromCart,
   getOrderById,

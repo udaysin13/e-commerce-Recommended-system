@@ -1,4 +1,5 @@
 export * from "./authController.js";
+export * from "./aiController.js";
 export * from "./cartController.js";
 export * from "./eventController.js";
 export * from "./healthController.js";

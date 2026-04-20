@@ -20,6 +20,10 @@ const formatCompact = (value: number) =>
   }).format(value);
 
 const getBadges = (product: Product) => {
+  if (product.popularityBadges?.length) {
+    return product.popularityBadges;
+  }
+
   const badges: string[] = [];
 
   if (product.purchaseCount >= 300) badges.push("Best Seller");

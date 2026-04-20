@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import {
+  getProductReviewSummary,
   getProductById,
   getProducts,
   searchProducts,
@@ -39,6 +40,18 @@ export const getProductByIdController: RequestHandler = async (req, res) => {
     success: true,
     data: {
       product,
+    },
+  });
+};
+
+export const productReviewSummaryController: RequestHandler = async (req, res) => {
+  const id = validateProductIdParam(req.params.id);
+  const summary = await getProductReviewSummary(id);
+
+  res.status(httpStatus.ok).json({
+    success: true,
+    data: {
+      summary,
     },
   });
 };

@@ -1,3 +1,19 @@
+export type RecommendationMood =
+  | "budget"
+  | "premium"
+  | "trending"
+  | "value"
+  | "new";
+
+export type RecommendationExperience = "personalized" | "explore";
+
+export type RecommendationBadge =
+  | "Trending"
+  | "Best Seller"
+  | "Popular in this category"
+  | "Frequently Viewed"
+  | "Top Rated";
+
 export type RecommendationScore = {
   content: number;
   collaborative: number;
@@ -12,8 +28,14 @@ export type RecommendationProduct = {
   brand: string | null;
   price: number;
   currency: string;
+  stockQuantity: number;
   imageUrl: string | null;
   averageRating: number;
+  ratingCount: number;
+  viewCount: number;
+  clickCount: number;
+  cartCount: number;
+  purchaseCount: number;
   category: {
     id: string;
     name: string;
@@ -25,28 +47,65 @@ export type RecommendationItem = {
   product: RecommendationProduct;
   score: RecommendationScore;
   reason: string;
+  badges: RecommendationBadge[];
 };
 
 export type RecommendationResult = {
   strategy: string;
-  source: "fastapi" | "fallback";
+  source: "local" | "fastapi" | "fallback";
+  mode: RecommendationMood;
+  experience: RecommendationExperience;
   count: number;
   items: RecommendationItem[];
 };
 
-export type FastApiRecommendationItem = {
-  product_id: string;
+export type SmartBundleResult = {
   title: string;
-  category: string;
-  brand: string | null;
-  price: number;
-  rating: number;
-  score: RecommendationScore;
-  reason: string;
+  description: string;
+  anchorProduct: RecommendationProduct;
+  totalBundlePrice: number;
+  items: RecommendationItem[];
 };
 
-export type FastApiRecommendationResponse = {
-  strategy: string;
-  count: number;
-  items: FastApiRecommendationItem[];
+export type UserInsightMetric = {
+  label: string;
+  value: string;
+  note: string;
+};
+
+export type UserShoppingInsights = {
+  shopperProfile: string;
+  profileReason: string;
+  averageSpend: number;
+  spendingRangeLabel: string;
+  mostViewedCategory: string;
+  mostPurchasedCategory: string;
+  favoriteBrand: string;
+  highlightMetrics: UserInsightMetric[];
+  recommendationModes: RecommendationMood[];
+};
+
+export type SeasonalFestival = {
+  id: string;
+  name: string;
+  icon: string;
+  date: string;
+  countdownDays: number;
+  tagline: string;
+  saleLabel: string | null;
+};
+
+export type SeasonalRecommendationSection = {
+  id: string;
+  title: string;
+  eyebrow: string;
+  description: string;
+  icon: string;
+  items: RecommendationItem[];
+};
+
+export type SeasonalRecommendationResponse = {
+  currentSeason: string;
+  activeFestival: SeasonalFestival | null;
+  sections: SeasonalRecommendationSection[];
 };

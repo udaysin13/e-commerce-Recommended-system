@@ -65,6 +65,49 @@ const paginateProducts = (
   };
 };
 
+const searchMockProducts = (products: Product[], query: string) => {
+  const normalized = query.trim().toLowerCase();
+  const tokens = normalized.split(" ").filter(Boolean);
+  const aliasMap: Record<string, string[]> = {
+    fashion: ["fashion", "clothes", "clothing", "apparel", "dress", "wear", "outfit"],
+    footwear: ["footwear", "shoe", "shoes", "sneaker", "sneakers", "running shoes"],
+    electronics: ["electronics", "gadget", "tech", "device", "audio"],
+    "home-kitchen": ["home", "kitchen", "cookware", "kitchenware", "household"],
+    beauty: ["beauty", "skincare", "makeup", "cosmetics", "serum", "cream"],
+    "sports-fitness": ["sports", "fitness", "workout", "gym", "training", "running"],
+    books: ["books", "book", "reading", "novel"],
+    accessories: ["accessories", "accessory", "wallet", "bag", "daily carry"],
+  };
+
+  return products.filter((product) => {
+    const haystack = [
+      product.name,
+      product.description ?? "",
+      product.shortDescription ?? "",
+      product.brand ?? "",
+      product.category.name,
+      product.category.slug,
+      ...product.tags,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    const matchesText =
+      normalized.length === 0 ||
+      haystack.includes(normalized) ||
+      tokens.some((token) => haystack.includes(token));
+
+    const matchesCategoryAlias = Object.entries(aliasMap).some(([slug, aliases]) => {
+      const aliasHit =
+        aliases.some((alias) => normalized.includes(alias) || tokens.some((token) => alias.includes(token))) ||
+        product.category.slug === slug;
+      return aliasHit && product.category.slug === slug;
+    });
+
+    return matchesText || matchesCategoryAlias;
+  });
+};
+
 const getMixedCatalogProducts = async (
   params: ProductListParams,
 ): Promise<ProductsResponse> => {
@@ -120,6 +163,10 @@ export const getProducts = async (
   params: ProductListParams = {},
 ): Promise<ProductsResponse> => {
   try {
+    if (params.search?.trim()) {
+      return await request<ProductsResponse>(`/products/search${buildQuery(params)}`);
+    }
+
     if (!params.category) {
       return await getMixedCatalogProducts(params);
     }
@@ -133,13 +180,13 @@ export const getProducts = async (
     const sortBy = params.sortBy ?? "newest";
     const sortOrder = params.sortOrder ?? (sortBy === "price" ? "asc" : "desc");
 
-    const filtered = mockProducts
+    const searchedProducts = search ? searchMockProducts(mockProducts, search) : mockProducts;
+    const filtered = searchedProducts
       .filter((product) => {
-        const matchesSearch = search ? product.name.toLowerCase().includes(search) : true;
         const matchesCategory = category
           ? product.category.slug === category || product.category.id === category
           : true;
-        return matchesSearch && matchesCategory;
+        return matchesCategory;
       })
       .sort((first, second) => {
         const direction = sortOrder === "asc" ? 1 : -1;

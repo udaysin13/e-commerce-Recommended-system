@@ -1,4 +1,5 @@
 export * from "./auth.validation.js";
+export * from "./ai.validation.js";
 export * from "./cart.validation.js";
 export * from "./event.validation.js";
 export * from "./order.validation.js";

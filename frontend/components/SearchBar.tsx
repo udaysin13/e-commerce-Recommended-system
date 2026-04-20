@@ -14,9 +14,10 @@ export const SearchBar = () => {
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
+    const trimmed = value.trim();
 
-    if (value.trim()) {
-      params.set("search", value.trim());
+    if (trimmed) {
+      params.set("search", trimmed);
     } else {
       params.delete("search");
     }
@@ -52,7 +53,7 @@ export const SearchBar = () => {
           onChange={(event) => setValue(event.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="Search headphones, lamps, sneakers..."
+          placeholder='Try "cheap t-shirts for men" or "best headphones under 5000"'
           className="min-h-11 w-full rounded border border-line bg-white px-4 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15"
         />
       </motion.div>
@@ -64,6 +65,11 @@ export const SearchBar = () => {
       >
         Search
       </motion.button>
+      {value.trim().length === 1 ? (
+        <p className="text-xs font-semibold text-ink/55 sm:self-center">
+          Use at least 2 characters for better results.
+        </p>
+      ) : null}
     </motion.form>
   );
 };

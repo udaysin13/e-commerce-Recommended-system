@@ -4,6 +4,7 @@ import { env } from "./lib/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { notFoundHandler } from "./middleware/notFound.js";
 import { authRouter } from "./routes/auth.routes.js";
+import { aiRouter } from "./routes/ai.routes.js";
 import { cartRouter } from "./routes/cart.routes.js";
 import { eventRouter } from "./routes/event.routes.js";
 import { healthRouter } from "./routes/health.routes.js";
@@ -39,6 +40,7 @@ export const createApp = () => {
   });
 
   app.use("/auth", authRouter);
+  app.use("/ai", aiRouter);
   app.use("/health", healthRouter);
   app.use("/products", productRouter);
   app.use("/cart", cartRouter);

@@ -83,6 +83,13 @@ export const Navbar = () => {
                   </div>
                   <div className="mt-2 grid gap-1 text-sm font-semibold text-ink">
                     <Link
+                      href="/dashboard"
+                      onClick={() => setMenuOpen(false)}
+                      className="rounded px-3 py-2 transition hover:bg-mist hover:text-teal"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
                       href="/orders"
                       onClick={() => setMenuOpen(false)}
                       className="rounded px-3 py-2 transition hover:bg-mist hover:text-teal"

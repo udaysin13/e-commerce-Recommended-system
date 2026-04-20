@@ -2,24 +2,58 @@ import Link from "next/link";
 import { Reveal } from "@/components/Motion";
 import { HeroSection } from "@/components/HeroSection";
 import { ProductGrid } from "@/components/ProductGrid";
+import { RecommendationLab } from "@/components/RecommendationLab";
 import { RecommendationSection } from "@/components/RecommendationSection";
+import { SeasonalSpotlightSection } from "@/components/SeasonalSpotlightSection";
 import { getProducts } from "@/lib/api";
-import {
-  getHomeRecommendations,
-  recommendedProductsToProducts,
-} from "@/lib/recommendationsApi";
+import { getSeasonalRecommendations } from "@/lib/recommendationsApi";
 
 export default async function HomePage() {
-  const [featuredProducts, trendingProducts, homeRecommendations] = await Promise.all([
+  const [featuredProducts, trendingProducts, seasonal] = await Promise.all([
     getProducts({ limit: 6, sortBy: "rating", sortOrder: "desc" }),
     getProducts({ limit: 3, sortBy: "newest", sortOrder: "desc" }),
-    getHomeRecommendations("demo-user", 3),
+    getSeasonalRecommendations(),
   ]);
-  const recommendedProducts = recommendedProductsToProducts(homeRecommendations);
 
   return (
     <>
       <HeroSection />
+
+      {seasonal ? (
+        <Reveal className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+          <div className="rounded border border-line bg-white px-5 py-4 shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase text-teal">
+                  Seasonal Context
+                </p>
+                <p className="mt-1 text-sm text-ink/65">
+                  Current season: <span className="font-bold text-ink">{seasonal.currentSeason}</span>
+                  {seasonal.activeFestival
+                    ? ` • ${seasonal.activeFestival.name} in ${seasonal.activeFestival.countdownDays} day${seasonal.activeFestival.countdownDays === 1 ? "" : "s"}`
+                    : ""}
+                </p>
+              </div>
+              {seasonal.activeFestival ? (
+                <div className="rounded bg-mist px-4 py-3 text-sm">
+                  <p className="font-bold text-ink">
+                    {seasonal.activeFestival.icon} {seasonal.activeFestival.name}
+                  </p>
+                  <p className="mt-1 text-ink/60">{seasonal.activeFestival.tagline}</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </Reveal>
+      ) : null}
+
+      {seasonal?.sections.map((section) => (
+        <SeasonalSpotlightSection
+          key={section.id}
+          section={section}
+          activeFestival={seasonal.activeFestival}
+        />
+      ))}
 
       <Reveal className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -48,14 +82,11 @@ export default async function HomePage() {
         products={trendingProducts.items}
       />
 
-      <RecommendationSection
-        eyebrow="Recommended"
-        title="Picked for the demo shopper"
-        products={
-          recommendedProducts.length > 0
-            ? recommendedProducts
-            : featuredProducts.items.slice().reverse()
-        }
+      <RecommendationLab
+        kind="home"
+        eyebrow="Recommendation Studio"
+        title="Explainable recommendations tuned to the shopper"
+        description="Switch between Personalized and Explore modes, then reshape the ranking with value, premium, trending, or new-arrival moods. Each card carries a short reason so the model feels understandable instead of mysterious."
       />
     </>
   );

@@ -26,10 +26,12 @@ export const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const badges = [
-    ...(product.purchaseCount >= 300 ? ["Best Seller"] : []),
-    ...(product.viewCount >= 1000 || product.clickCount >= 500 ? ["Trending"] : []),
-  ];
+  const badges = product.popularityBadges?.length
+    ? product.popularityBadges.slice(0, 2)
+    : [
+        ...(product.purchaseCount >= 300 ? ["Best Seller"] : []),
+        ...(product.viewCount >= 1000 || product.clickCount >= 500 ? ["Trending"] : []),
+      ];
 
   const handleBuyNow = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -44,6 +46,12 @@ export const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
   const handleProductClick = () => {
     void trackProductClickEvent(product.id);
   };
+
+  const summary = product.recommendationReason
+    ? product.brand
+      ? `${product.brand} | ${product.category.name}`
+      : product.category.name
+    : product.shortDescription ?? product.description;
 
   return (
     <motion.article
@@ -118,8 +126,22 @@ export const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
           </p>
         </div>
         <p className="mt-3 line-clamp-2 min-h-11 text-sm leading-6 text-ink/65">
-          {product.shortDescription ?? product.description}
+          {summary}
         </p>
+        {product.recommendationReason ? (
+          <p className="mt-2 rounded bg-teal/6 px-3 py-2 text-xs font-semibold text-teal">
+            {product.recommendationReason}
+          </p>
+        ) : null}
+        {product.smartTags?.length ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {product.smartTags.slice(0, 2).map((tag) => (
+              <span key={tag} className="rounded bg-mist px-2 py-1 text-[11px] font-bold text-ink/70">
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className="mt-auto flex items-center justify-between pt-4 text-sm">
           <span className="font-semibold text-ink">Rating {formatRating(product.averageRating)}</span>
           <span className="text-ink/55">{product.stockQuantity} in stock</span>
